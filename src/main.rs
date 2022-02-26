@@ -57,9 +57,8 @@ fn setup(
 
     let mut camera = OrthographicCameraBundle::new_2d();
     let projection = bevy::render::camera::OrthographicProjection {
-        // scaling_mode: ScalingMode::FixedVertical,
-        // right: 1000.,
-        // left: -1000.,
+        scaling_mode: ScalingMode::FixedVertical,
+        scale: 300.,
         ..Default::default()
     };
     camera.orthographic_projection = projection;

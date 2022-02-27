@@ -35,7 +35,7 @@ pub fn keyboard_input(
         let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
 
         match *unit_state {
-            UnitState::Attack => {
+            UnitState::Attack | UnitState::Wound => {
                 if let Some(orientation) = Orientation::from_keyboard(&keys) {
                     commands.entity(player).insert(orientation);
                 }
@@ -84,7 +84,7 @@ pub fn keyboard_input(
         let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
 
         match *unit_state {
-            UnitState::Attack => return,
+            UnitState::Attack | UnitState::Wound => return,
             UnitState::Stand | UnitState::Move => (),
         }
 
@@ -94,6 +94,24 @@ pub fn keyboard_input(
             unit_sprite: sprite.0,
             unit_anims: unit_anims.clone(),
             new_state: UnitState::Attack,
+            orientation,
+        });
+    }
+    // TODO: remove this later, it is just to test wound anim
+    else if keys.just_pressed(KeyCode::Key2) || keys.just_released(KeyCode::Key2) {
+        let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
+
+        match *unit_state {
+            UnitState::Attack | UnitState::Wound => return,
+            UnitState::Stand | UnitState::Move => (),
+        }
+
+        commands.entity(player).remove::<Movements>();
+        ev_unit_states.send(UnitStateChanged {
+            unit: player,
+            unit_sprite: sprite.0,
+            unit_anims: unit_anims.clone(),
+            new_state: UnitState::Wound,
             orientation,
         });
     }
@@ -146,7 +164,7 @@ pub fn gamepad_input(
         let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
 
         match *unit_state {
-            UnitState::Attack => {
+            UnitState::Attack | UnitState::Wound => {
                 if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
                     commands.entity(player).insert(orientation);
                 }
@@ -187,7 +205,7 @@ pub fn gamepad_input(
         let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
 
         match *unit_state {
-            UnitState::Attack | UnitState::Stand => return,
+            UnitState::Attack | UnitState::Stand | UnitState::Wound => return,
             UnitState::Move => {
                 commands.entity(player).remove::<Movements>();
                 ev_unit_states.send(UnitStateChanged {
@@ -203,7 +221,7 @@ pub fn gamepad_input(
         let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
 
         match *unit_state {
-            UnitState::Attack => return,
+            UnitState::Attack | UnitState::Wound => return,
             UnitState::Stand | UnitState::Move => (),
         }
 

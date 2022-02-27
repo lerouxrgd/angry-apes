@@ -14,6 +14,9 @@ pub struct UnitAnimations {
     pub attack_h: Handle<TextureAtlas>,
     pub attack_timer: Timer,
     pub attack_count: usize,
+    pub wound_h: Handle<TextureAtlas>,
+    pub wound_timer: Timer,
+    pub wound_count: usize,
 }
 
 impl UnitAnimations {
@@ -22,6 +25,7 @@ impl UnitAnimations {
             UnitState::Stand => self.stand_h.clone(),
             UnitState::Move => self.move_h.clone(),
             UnitState::Attack => self.attack_h.clone(),
+            UnitState::Wound => self.wound_h.clone(),
         }
     }
 
@@ -30,6 +34,7 @@ impl UnitAnimations {
             UnitState::Stand => self.stand_timer.clone(),
             UnitState::Move => self.move_timer.clone(),
             UnitState::Attack => self.attack_timer.clone(),
+            UnitState::Wound => self.wound_timer.clone(),
         }
     }
 
@@ -37,6 +42,7 @@ impl UnitAnimations {
         match u_state {
             UnitState::Stand | UnitState::Move => None,
             UnitState::Attack => Some(self.attack_count),
+            UnitState::Wound => Some(self.wound_count),
         }
     }
 }
@@ -46,6 +52,7 @@ pub enum UnitState {
     Stand,
     Move,
     Attack,
+    Wound,
 }
 
 #[derive(Component)]

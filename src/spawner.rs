@@ -42,6 +42,12 @@ pub fn spawn_player(
     let attack_timer = Timer::from_seconds(0.1, true);
     let attack_count = 5;
 
+    let wound_image = asset_server.load("Paladin__WOUND.png");
+    let wound_atlas = TextureAtlas::from_grid(wound_image, Vec2::new(90.0, 127.0), 3, 1);
+    let wound_h = texture_atlases.add(wound_atlas);
+    let wound_timer = Timer::from_seconds(0.1, true);
+    let wound_count = 3;
+
     let unit_anims = UnitAnimations {
         stand_h,
         stand_timer,
@@ -50,6 +56,9 @@ pub fn spawn_player(
         attack_h,
         attack_timer,
         attack_count,
+        wound_h,
+        wound_timer,
+        wound_count,
     };
     let unit_state = UnitState::Stand;
     let orientation = Orientation::Right;

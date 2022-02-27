@@ -35,7 +35,8 @@ fn main() {
         .add_system(move_unit)
         .add_system(animate_unit_sprites)
         .add_system(animate_coins)
-        .add_system(switch_ape_attack)
+        .add_system(trigger_ape_attack)
+        .add_system(animate_ape_attack)
         .add_stage_before(
             CoreStage::PostUpdate,
             "update_unit_states",
@@ -58,8 +59,10 @@ fn setup(
 
     spawn_coins(&mut commands, &asset_server, &mut texture_atlases);
 
-    // TODO: refactor this block into a proper entity
+    // TODO: refactor this block into a proper entites
     {
+        // Ape related
+
         let texture_handle = asset_server.load("bored_ape_king.png");
         let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(600.0, 600.0), 1, 1);
         let texture_atlas_h = texture_atlases.add(texture_atlas);
@@ -70,40 +73,83 @@ fn setup(
             ..Default::default()
         });
 
-        let texture_handle = asset_server.load("bored_ape_king_lasers.png");
-        let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(900.0, 600.0), 1, 1);
-        let texture_atlas_h = texture_atlases.add(texture_atlas);
+        // ApeAttack related
 
-        commands
-            .spawn_bundle(SpriteSheetBundle {
-                texture_atlas: texture_atlas_h,
-                transform: Transform::from_xyz(150., 0., 10.),
-                ..Default::default()
-            })
-            .insert(AttackAnimation::Off(Timer::from_seconds(3., false)));
+        let laser_init_image = asset_server.load("ape_eyes.png");
+        let laser_init_atlas =
+            TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1);
+
+        let laser_on_image = asset_server.load("ape_lasers.png");
+        let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
+
+        commands.insert_resource(ApeAttackSpec {
+            init_h: texture_atlases.add(laser_init_atlas),
+            init_duration: DurationTimer(Timer::from_seconds(0.6, false)),
+            init_timer: Timer::from_seconds(0.1, true),
+            on_h: texture_atlases.add(laser_on_atlas),
+            on_duration: DurationTimer(Timer::from_seconds(1., false)),
+            on_timer: Timer::from_seconds(0.1, true),
+        });
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-fn switch_ape_attack(
+// TODO: make this random somehow
+struct TriggerTimer(Timer);
+
+impl Default for TriggerTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(3., true))
+    }
+}
+
+fn trigger_ape_attack(
     time: Res<Time>,
-    mut attack_q: Query<(&mut AttackAnimation, &mut Visibility)>,
+    mut commands: Commands,
+    attack_spec: Res<ApeAttackSpec>,
+    mut trigger: Local<TriggerTimer>,
 ) {
-    for (mut anim, mut visibility) in attack_q.iter_mut() {
+    trigger.0.tick(time.delta());
+    if trigger.0.just_finished() {
+        spawn_attack_init(&mut commands, &attack_spec);
+    }
+}
+
+fn animate_ape_attack(
+    time: Res<Time>,
+    attack_spec: Res<ApeAttackSpec>,
+    mut commands: Commands,
+    texture_atlases: Res<Assets<TextureAtlas>>,
+    mut attack_q: Query<(
+        Entity,
+        &mut DurationTimer,
+        &mut StagedAnimation,
+        &mut TextureAtlasSprite,
+        &Handle<TextureAtlas>,
+    )>,
+) {
+    for (id, mut duration, mut anim, mut sprite, texture_atlas_h) in attack_q.iter_mut() {
+        duration.0.tick(time.delta());
+
         match &mut *anim {
-            AttackAnimation::On(timer) => {
+            StagedAnimation::Init(timer) => {
                 timer.tick(time.delta());
                 if timer.just_finished() {
-                    *anim = AttackAnimation::Off(Timer::from_seconds(3., false));
-                    visibility.is_visible = false;
+                    let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
+                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+                } else if duration.0.finished() {
+                    commands.entity(id).despawn();
+                    spawn_attack_on(&mut commands, &attack_spec);
                 }
             }
-            AttackAnimation::Off(timer) => {
+            StagedAnimation::On(timer) => {
                 timer.tick(time.delta());
                 if timer.just_finished() {
-                    *anim = AttackAnimation::On(Timer::from_seconds(1., false));
-                    visibility.is_visible = true;
+                    let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
+                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+                } else if duration.0.finished() {
+                    commands.entity(id).despawn();
                 }
             }
         }
@@ -210,10 +256,10 @@ fn animate_coins(
         With<Coin>,
     >,
 ) {
-    for (mut anim, mut sprite, texture_atlas_handle) in query.iter_mut() {
+    for (mut anim, mut sprite, texture_atlas_h) in query.iter_mut() {
         anim.timer.tick(time.delta());
         if anim.timer.just_finished() {
-            let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
+            let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
             sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
         }
     }

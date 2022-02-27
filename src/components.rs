@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-////////////////////////////////////////////////////////////////////////////////////////
-
 #[derive(Component)]
 pub struct Player;
 
@@ -204,6 +202,8 @@ impl Orientation {
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
+// TODO: Add all Coin specific components here
+
 #[derive(Component)]
 pub struct Coin;
 
@@ -212,7 +212,20 @@ pub struct Coin;
 // TODO: Add all Ape specific components here
 
 #[derive(Component)]
-pub enum AttackAnimation {
-    On(Timer),
-    Off(Timer),
+pub struct ApeAttackSpec {
+    pub init_h: Handle<TextureAtlas>,
+    pub init_duration: DurationTimer,
+    pub init_timer: Timer,
+    pub on_h: Handle<TextureAtlas>,
+    pub on_duration: DurationTimer,
+    pub on_timer: Timer,
 }
+
+#[derive(Component)]
+pub enum StagedAnimation {
+    Init(Timer),
+    On(Timer),
+}
+
+#[derive(Clone, Component)]
+pub struct DurationTimer(pub Timer);

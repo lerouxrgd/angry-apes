@@ -147,3 +147,25 @@ pub fn spawn_coins(
         })
         .insert(Coin);
 }
+
+pub fn spawn_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
+    commands
+        .spawn_bundle(SpriteSheetBundle {
+            texture_atlas: attack_spec.init_h.clone(),
+            transform: Transform::from_xyz(150., 0., 10.),
+            ..Default::default()
+        })
+        .insert(attack_spec.init_duration.clone())
+        .insert(StagedAnimation::Init(attack_spec.init_timer.clone()));
+}
+
+pub fn spawn_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
+    commands
+        .spawn_bundle(SpriteSheetBundle {
+            texture_atlas: attack_spec.on_h.clone(),
+            transform: Transform::from_xyz(150., 0., 10.),
+            ..Default::default()
+        })
+        .insert(attack_spec.on_duration.clone())
+        .insert(StagedAnimation::On(attack_spec.on_timer.clone()));
+}

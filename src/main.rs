@@ -32,10 +32,15 @@ fn main() {
         .add_system(gamepad_connection_events.before("input"))
         .add_system(gamepad_input.label("input"))
         .add_system(keyboard_input.label("input"))
-        .add_system(move_unit.label("movements").after("input"))
-        .add_system(update_unit_states.label("unit_states").after("input"))
-        .add_system(animate_unit_sprites.after("movements").after("unit_states"))
+        .add_system(move_unit)
+        .add_system(animate_unit_sprites)
         .add_system(switch_ape_attack)
+        .add_stage_before(
+            CoreStage::PostUpdate,
+            "update_unit_states",
+            SystemStage::parallel(),
+        )
+        .add_system_to_stage("update_unit_states", update_unit_states)
         .init_resource::<Events<UnitStateChanged>>()
         .init_resource::<InputKind>()
         .run();

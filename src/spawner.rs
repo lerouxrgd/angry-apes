@@ -39,13 +39,13 @@ pub fn spawn_player(
     let attack_image = asset_server.load("Paladin__ATTACK_1.png");
     let attack_atlas = TextureAtlas::from_grid(attack_image, Vec2::new(105.0, 107.0), 5, 1);
     let attack_h = texture_atlases.add(attack_atlas);
-    let attack_timer = Timer::from_seconds(0.1, true);
+    let attack_timer = Timer::from_seconds(0.11, true);
     let attack_count = 5;
 
     let wound_image = asset_server.load("Paladin__WOUND.png");
-    let wound_atlas = TextureAtlas::from_grid(wound_image, Vec2::new(90.0, 127.0), 3, 1);
+    let wound_atlas = TextureAtlas::from_grid(wound_image, Vec2::new(110.0, 127.0), 3, 1);
     let wound_h = texture_atlases.add(wound_atlas);
-    let wound_timer = Timer::from_seconds(0.1, true);
+    let wound_timer = Timer::from_seconds(0.13, true);
     let wound_count = 3;
 
     let unit_anims = UnitAnimations {

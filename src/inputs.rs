@@ -70,7 +70,12 @@ pub fn keyboard_input(
             }
         }
     } else if keyboard_direction_just_released(&keys) {
-        let (player, _, unit_anims, sprite, &orientation) = player_q.single();
+        let (player, unit_state, unit_anims, sprite, &orientation) = player_q.single();
+
+        match *unit_state {
+            UnitState::Move => (),
+            _ => return,
+        }
 
         commands.entity(player).remove::<Movements>();
         ev_unit_states.send(UnitStateChanged {

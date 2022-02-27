@@ -34,6 +34,7 @@ fn main() {
         .add_system(keyboard_input.label("input"))
         .add_system(move_unit)
         .add_system(animate_unit_sprites)
+        .add_system(animate_coins)
         .add_system(switch_ape_attack)
         .add_stage_before(
             CoreStage::PostUpdate,
@@ -54,6 +55,8 @@ fn setup(
     spawn_background(&mut commands, &asset_server);
     spawn_player(&mut commands, &asset_server, &mut texture_atlases);
     spawn_camera(&mut commands);
+
+    spawn_coins(&mut commands, &asset_server, &mut texture_atlases);
 
     // TODO: refactor this block into a proper entity
     {
@@ -191,6 +194,27 @@ fn move_unit(time: Res<Time>, mut sprite_q: Query<(&mut Transform, &Movements)>)
                 Moving::Down => transform.translation.y -= 140. * time.delta_seconds(),
                 Moving::Right => transform.translation.x += 140. * time.delta_seconds(),
             }
+        }
+    }
+}
+
+fn animate_coins(
+    time: Res<Time>,
+    texture_atlases: Res<Assets<TextureAtlas>>,
+    mut query: Query<
+        (
+            &mut Animation,
+            &mut TextureAtlasSprite,
+            &Handle<TextureAtlas>,
+        ),
+        With<Coin>,
+    >,
+) {
+    for (mut anim, mut sprite, texture_atlas_handle) in query.iter_mut() {
+        anim.timer.tick(time.delta());
+        if anim.timer.just_finished() {
+            let texture_atlas = texture_atlases.get(texture_atlas_handle).unwrap();
+            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
         }
     }
 }

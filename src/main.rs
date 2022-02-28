@@ -4,6 +4,7 @@ mod spawner;
 
 mod prelude {
     pub use std::collections::HashSet;
+    pub use std::time::Duration;
 
     pub use bevy::app::Events;
     pub use bevy::input::gamepad::{Gamepad, GamepadAxisType, GamepadButton};
@@ -84,25 +85,16 @@ fn setup(
 
         commands.insert_resource(ApeAttackSpec {
             init_h: texture_atlases.add(laser_init_atlas),
-            init_duration: DurationTimer(Timer::from_seconds(0.6, false)),
+            init_duration: DurationTimer::from_seconds(0.6),
             init_timer: Timer::from_seconds(0.1, true),
             on_h: texture_atlases.add(laser_on_atlas),
-            on_duration: DurationTimer(Timer::from_seconds(1., false)),
+            on_duration: DurationTimer::from_seconds(1.0),
             on_timer: Timer::from_seconds(0.1, true),
         });
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
-
-// TODO: make this random somehow
-struct TriggerTimer(Timer);
-
-impl Default for TriggerTimer {
-    fn default() -> Self {
-        Self(Timer::from_seconds(3., true))
-    }
-}
 
 fn trigger_ape_attack(
     time: Res<Time>,
@@ -123,33 +115,34 @@ fn animate_ape_attack(
     texture_atlases: Res<Assets<TextureAtlas>>,
     mut attack_q: Query<(
         Entity,
-        &mut DurationTimer,
         &mut StagedAnimation,
         &mut TextureAtlasSprite,
         &Handle<TextureAtlas>,
     )>,
 ) {
-    for (id, mut duration, mut anim, mut sprite, texture_atlas_h) in attack_q.iter_mut() {
-        duration.0.tick(time.delta());
-
+    for (id, mut anim, mut sprite, texture_atlas_h) in attack_q.iter_mut() {
         match &mut *anim {
-            StagedAnimation::Init(timer) => {
+            StagedAnimation::Init { duration, timer } => {
+                duration.tick(time.delta());
                 timer.tick(time.delta());
-                if timer.just_finished() {
-                    let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
-                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
-                } else if duration.0.finished() {
+
+                if duration.finished() {
                     commands.entity(id).despawn();
                     spawn_attack_on(&mut commands, &attack_spec);
-                }
-            }
-            StagedAnimation::On(timer) => {
-                timer.tick(time.delta());
-                if timer.just_finished() {
+                } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
-                } else if duration.0.finished() {
+                }
+            }
+            StagedAnimation::On { duration, timer } => {
+                timer.tick(time.delta());
+                duration.tick(time.delta());
+
+                if duration.finished() {
                     commands.entity(id).despawn();
+                } else if timer.just_finished() {
+                    let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
+                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 }
             }
         }
@@ -235,10 +228,10 @@ fn move_unit(time: Res<Time>, mut sprite_q: Query<(&mut Transform, &Movements)>)
     for (mut transform, movements) in sprite_q.iter_mut() {
         for moving in movements.0.iter() {
             match moving {
-                Moving::Left => transform.translation.x -= 140. * time.delta_seconds(),
-                Moving::Up => transform.translation.y += 140. * time.delta_seconds(),
-                Moving::Down => transform.translation.y -= 140. * time.delta_seconds(),
-                Moving::Right => transform.translation.x += 140. * time.delta_seconds(),
+                Moving::Left => transform.translation.x -= 150. * time.delta_seconds(),
+                Moving::Up => transform.translation.y += 150. * time.delta_seconds(),
+                Moving::Down => transform.translation.y -= 150. * time.delta_seconds(),
+                Moving::Right => transform.translation.x += 150. * time.delta_seconds(),
             }
         }
     }

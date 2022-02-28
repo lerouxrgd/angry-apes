@@ -8,6 +8,14 @@ pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
     });
 }
 
+pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
+    commands.spawn_bundle(SpriteBundle {
+        texture: asset_server.load("platform.png"),
+        transform: Transform::from_xyz(0., -270., 10.),
+        ..Default::default()
+    });
+}
+
 pub fn spawn_camera(commands: &mut Commands) {
     let projection = OrthographicProjection {
         scaling_mode: ScalingMode::FixedVertical,
@@ -70,7 +78,7 @@ pub fn spawn_player(
         .insert(GlobalTransform::default())
         .insert(Transform {
             scale: Vec3::splat(1.5),
-            translation: Vec3::new(0., -200., 999.),
+            translation: Vec3::new(0., -170., 999.),
             ..Default::default()
         })
         .insert(unit_anims)

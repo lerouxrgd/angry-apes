@@ -55,6 +55,7 @@ fn setup(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     spawn_background(&mut commands, &asset_server);
+    spawn_platform(&mut commands, &asset_server);
     spawn_player(&mut commands, &asset_server, &mut texture_atlases);
     spawn_camera(&mut commands);
 

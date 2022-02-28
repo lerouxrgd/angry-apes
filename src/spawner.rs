@@ -148,37 +148,83 @@ pub fn spawn_coins(
         .insert(Coin);
 }
 
+pub fn spawn_ape(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlases: &mut Assets<TextureAtlas>,
+) {
+    let ape = commands
+        .spawn()
+        .insert(Ape)
+        .insert_bundle(SpriteBundle {
+            texture: asset_server.load("bored_ape_king.png"),
+            transform: Transform {
+                scale: Vec3::splat(0.8),
+                translation: Vec3::new(0., 0., 5.),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .id();
+
+    let laser_init_image = asset_server.load("ape_eyes.png");
+    let laser_init_atlas = TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1);
+    let laser_on_image = asset_server.load("ape_lasers.png");
+    let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
+    let ape_attack_spec = ApeAttackSpec {
+        ape,
+        init_h: texture_atlases.add(laser_init_atlas),
+        init_duration: DurationTimer::from_seconds(0.6),
+        init_timer: Timer::from_seconds(0.1, true),
+        on_h: texture_atlases.add(laser_on_atlas),
+        on_duration: DurationTimer::from_seconds(1.0),
+        on_timer: Timer::from_seconds(0.1, true),
+    };
+
+    commands.entity(ape).insert(ape_attack_spec);
+}
+
 pub fn spawn_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
     let ApeAttackSpec {
+        ape,
         init_duration,
         init_timer,
         ..
     } = attack_spec;
 
-    commands
+    let animation = commands
         .spawn_bundle(SpriteSheetBundle {
             texture_atlas: attack_spec.init_h.clone(),
             transform: Transform::from_xyz(150., 0., 10.),
             ..Default::default()
         })
+        .insert(ApeEntity(*ape))
         .insert(StagedAnimation::init(
             init_duration.clone(),
             init_timer.clone(),
-        ));
+        ))
+        .id();
+
+    commands.entity(*ape).push_children(&[animation]);
 }
 
 pub fn spawn_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
     let ApeAttackSpec {
+        ape,
         on_duration,
         on_timer,
         ..
     } = attack_spec;
 
-    commands
+    let animation = commands
         .spawn_bundle(SpriteSheetBundle {
             texture_atlas: attack_spec.on_h.clone(),
             transform: Transform::from_xyz(150., 0., 10.),
             ..Default::default()
         })
-        .insert(StagedAnimation::on(on_duration.clone(), on_timer.clone()));
+        .insert(ApeEntity(*ape))
+        .insert(StagedAnimation::on(on_duration.clone(), on_timer.clone()))
+        .id();
+
+    commands.entity(*ape).push_children(&[animation]);
 }

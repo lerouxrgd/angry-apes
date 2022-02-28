@@ -209,10 +209,15 @@ pub struct Coin;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
-// TODO: Add all Ape specific components here
+#[derive(Component)]
+pub struct Ape;
+
+#[derive(Component)]
+pub struct ApeEntity(pub Entity);
 
 #[derive(Component)]
 pub struct ApeAttackSpec {
+    pub ape: Entity,
     pub init_h: Handle<TextureAtlas>,
     pub init_duration: DurationTimer,
     pub init_timer: Timer,

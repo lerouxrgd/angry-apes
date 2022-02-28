@@ -60,38 +60,7 @@ fn setup(
 
     spawn_coins(&mut commands, &asset_server, &mut texture_atlases);
 
-    // TODO: refactor this block into a proper entites
-    {
-        // Ape related
-
-        let texture_handle = asset_server.load("bored_ape_king.png");
-        let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(600.0, 600.0), 1, 1);
-        let texture_atlas_h = texture_atlases.add(texture_atlas);
-
-        commands.spawn_bundle(SpriteSheetBundle {
-            texture_atlas: texture_atlas_h,
-            transform: Transform::from_xyz(0., 0., 5.),
-            ..Default::default()
-        });
-
-        // ApeAttack related
-
-        let laser_init_image = asset_server.load("ape_eyes.png");
-        let laser_init_atlas =
-            TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1);
-
-        let laser_on_image = asset_server.load("ape_lasers.png");
-        let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
-
-        commands.insert_resource(ApeAttackSpec {
-            init_h: texture_atlases.add(laser_init_atlas),
-            init_duration: DurationTimer::from_seconds(0.6),
-            init_timer: Timer::from_seconds(0.1, true),
-            on_h: texture_atlases.add(laser_on_atlas),
-            on_duration: DurationTimer::from_seconds(1.0),
-            on_timer: Timer::from_seconds(0.1, true),
-        });
-    }
+    spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -99,28 +68,32 @@ fn setup(
 fn trigger_ape_attack(
     time: Res<Time>,
     mut commands: Commands,
-    attack_spec: Res<ApeAttackSpec>,
+    apes_q: Query<&ApeAttackSpec, With<Ape>>,
     mut trigger: Local<TriggerTimer>,
 ) {
     trigger.0.tick(time.delta());
     if trigger.0.just_finished() {
+        let attack_spec = apes_q.single();
         spawn_attack_init(&mut commands, &attack_spec);
     }
 }
 
 fn animate_ape_attack(
     time: Res<Time>,
-    attack_spec: Res<ApeAttackSpec>,
     mut commands: Commands,
     texture_atlases: Res<Assets<TextureAtlas>>,
-    mut attack_q: Query<(
+    apes_q: Query<&ApeAttackSpec, With<Ape>>,
+    mut attack_anim_q: Query<(
         Entity,
+        &ApeEntity,
         &mut StagedAnimation,
         &mut TextureAtlasSprite,
         &Handle<TextureAtlas>,
     )>,
 ) {
-    for (id, mut anim, mut sprite, texture_atlas_h) in attack_q.iter_mut() {
+    for (id, ape, mut anim, mut sprite, texture_atlas_h) in attack_anim_q.iter_mut() {
+        let attack_spec = apes_q.get(ape.0).unwrap();
+
         match &mut *anim {
             StagedAnimation::Init { duration, timer } => {
                 duration.tick(time.delta());
@@ -170,34 +143,36 @@ fn animate_unit_sprites(
             continue;
         }
 
-        // This is a limited animation
-        if let Some(count) = anim.count.as_mut() {
-            if *count != 0 {
-                *count -= 1;
+        match anim.count.as_mut() {
+            // This is a finite animation
+            Some(count) => {
+                if *count != 0 {
+                    *count -= 1;
+                    let texture_atlas = texture_atlases
+                        .get(unit_anims.atlas_for(unit_state))
+                        .unwrap();
+                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+                }
+                // Animation is finished
+                else {
+                    ev_unit_states.send(UnitStateChanged {
+                        unit,
+                        unit_sprite: unit_sprite.0,
+                        unit_anims: unit_anims.clone(),
+                        new_state: UnitState::Stand, // TODO: make some state transistion logic
+                        orientation,
+                    });
+                    continue;
+                }
+            }
+            // This is an infinite animation
+            None => {
                 let texture_atlas = texture_atlases
                     .get(unit_anims.atlas_for(unit_state))
                     .unwrap();
                 sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+                sprite.flip_x = orientation.flip_x();
             }
-            // Animation is finished
-            else {
-                ev_unit_states.send(UnitStateChanged {
-                    unit,
-                    unit_sprite: unit_sprite.0,
-                    unit_anims: unit_anims.clone(),
-                    new_state: UnitState::Stand, // TODO: make some state transistion logic
-                    orientation,
-                });
-                continue;
-            }
-        }
-        // This is a looping animation
-        else {
-            let texture_atlas = texture_atlases
-                .get(unit_anims.atlas_for(unit_state))
-                .unwrap();
-            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
-            sprite.flip_x = orientation.flip_x();
         }
     }
 }

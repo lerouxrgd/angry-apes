@@ -34,6 +34,10 @@ pub fn spawn_player(
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlas>,
 ) {
+    // TODO: also load crusader sprites
+    // TODO: make a PaladinState::{Normal,Strong} with specific attack/defense
+    // TODO: use it when updating sprites
+
     let stand_image = asset_server.load("Paladin__STAND.png");
     let stand_atlas = TextureAtlas::from_grid(stand_image, Vec2::new(57.0, 107.0), 11, 1);
     let stand_h = texture_atlases.add(stand_atlas);
@@ -85,7 +89,8 @@ pub fn spawn_player(
         .insert(unit_state)
         .insert(UnitSprite(unit_sprite))
         .push_children(&[unit_sprite])
-        .insert(orientation);
+        .insert(orientation)
+        .insert(EthOwned::default());
 }
 
 pub fn spawn_unit_sprite(
@@ -110,32 +115,6 @@ pub fn spawn_unit_sprite(
         .id()
 }
 
-pub fn spawn_coins(
-    commands: &mut Commands,
-    asset_server: &AssetServer,
-    texture_atlases: &mut Assets<TextureAtlas>,
-) {
-    let eth_handle = asset_server.load("eth.png");
-    let eth_atlas = TextureAtlas::from_grid(eth_handle, Vec2::new(50.0, 50.0), 1, 11);
-    let eth_atlas_h = texture_atlases.add(eth_atlas);
-
-    commands
-        .spawn_bundle(SpriteSheetBundle {
-            texture_atlas: eth_atlas_h,
-            transform: Transform {
-                translation: Vec3::new(-300., -222., 10.),
-                scale: Vec3::splat(1.2),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Animation {
-            timer: Timer::from_seconds(0.12, true),
-            count: None,
-        })
-        .insert(Coin);
-}
-
 pub fn spawn_ape(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -154,6 +133,8 @@ pub fn spawn_ape(
             ..Default::default()
         })
         .id();
+
+    // TODO: add some kind of attack_offset{x} (to be able to locate attack impact pos)
 
     let laser_init_image = asset_server.load("ape_eyes.png");
     let laser_init_atlas = TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1);

@@ -1,10 +1,11 @@
 mod components;
+mod eth;
 mod inputs;
 mod spawner;
 
 mod prelude {
     pub use std::collections::HashSet;
-    pub use std::time::Duration;
+    pub use std::time::{Duration, Instant};
 
     pub use bevy::app::Events;
     pub use bevy::input::gamepad::{Gamepad, GamepadAxisType, GamepadButton};
@@ -13,32 +14,52 @@ mod prelude {
     pub use bevy::prelude::*;
     pub use bevy::render::camera::OrthographicProjection;
     pub use bevy::render::camera::ScalingMode;
+    pub use bevy_embedded_assets::EmbeddedAssetPlugin;
+    pub use bevy_prototype_lyon::prelude::{
+        DrawMode, FillMode, Geometry, GeometryBuilder, Path as TessPath, ShapePlugin, StrokeMode,
+    };
+    pub use bevy_prototype_lyon::shapes;
+    pub use lyon_tessellation as tess;
 
     pub use crate::components::*;
+    pub use crate::eth::*;
     pub use crate::inputs::*;
     pub use crate::spawner::*;
 }
 
-use prelude::*;
+use crate::prelude::*;
 
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
             title: "Angry Apes".to_string(),
+            width: 1200.,
+            height: 600.,
             ..Default::default()
         })
         .insert_resource(Msaa { samples: 1 })
-        .add_plugins(DefaultPlugins)
+        .add_plugins_with(DefaultPlugins, |group| {
+            group.add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin)
+        })
+        .add_plugin(ShapePlugin)
         .add_startup_system(setup)
+        // Inputs related
         .add_system(gamepad_connection_events.before("input"))
         .add_system(gamepad_input.label("input"))
         .add_system(keyboard_input.label("input"))
+        // Player related
         .add_system(move_unit)
         .add_system(animate_unit_sprites)
-        .add_system(animate_coins)
+        // Eth related
+        .add_system(make_eth)
+        .add_system(animate_eth)
+        .add_system(player_collects_eth)
+        .add_system(player_eth_gauge)
+        // Ape related
         .add_system(move_ape)
         .add_system(trigger_ape_attack)
         .add_system(animate_ape_attack)
+        // Process updates
         .add_stage_before(
             CoreStage::PostUpdate,
             "update_unit_states",
@@ -55,14 +76,15 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
+    spawn_camera(&mut commands);
     spawn_background(&mut commands, &asset_server);
     spawn_platform(&mut commands, &asset_server);
+
     spawn_player(&mut commands, &asset_server, &mut texture_atlases);
-    spawn_camera(&mut commands);
-
-    spawn_coins(&mut commands, &asset_server, &mut texture_atlases);
-
     spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
+
+    init_eth_handle(&mut commands, &asset_server, &mut texture_atlases);
+    spawn_ethbar(&mut commands, &asset_server);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -220,27 +242,6 @@ fn move_unit(time: Res<Time>, mut sprite_q: Query<(&mut Transform, &Movements)>)
                 Moving::Down => transform.translation.y -= 150. * time.delta_seconds(),
                 Moving::Right => transform.translation.x += 150. * time.delta_seconds(),
             }
-        }
-    }
-}
-
-fn animate_coins(
-    time: Res<Time>,
-    texture_atlases: Res<Assets<TextureAtlas>>,
-    mut query: Query<
-        (
-            &mut Animation,
-            &mut TextureAtlasSprite,
-            &Handle<TextureAtlas>,
-        ),
-        With<Coin>,
-    >,
-) {
-    for (mut anim, mut sprite, texture_atlas_h) in query.iter_mut() {
-        anim.timer.tick(time.delta());
-        if anim.timer.just_finished() {
-            let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
-            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
         }
     }
 }

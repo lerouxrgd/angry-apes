@@ -11,7 +11,7 @@ pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
 pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
     commands.spawn_bundle(SpriteBundle {
         texture: asset_server.load("platform.png"),
-        transform: Transform::from_xyz(0., -270., 10.),
+        transform: Transform::from_xyz(0., -270., 1.),
         ..Default::default()
     });
 }
@@ -123,7 +123,7 @@ pub fn spawn_coins(
         .spawn_bundle(SpriteSheetBundle {
             texture_atlas: eth_atlas_h,
             transform: Transform {
-                translation: Vec3::new(-300., -200., 10.),
+                translation: Vec3::new(-300., -222., 10.),
                 scale: Vec3::splat(1.2),
                 ..Default::default()
             },
@@ -131,26 +131,6 @@ pub fn spawn_coins(
         })
         .insert(Animation {
             timer: Timer::from_seconds(0.12, true),
-            count: None,
-        })
-        .insert(Coin);
-
-    let doge_handle = asset_server.load("doge.png");
-    let doge_atlas = TextureAtlas::from_grid(doge_handle, Vec2::new(62.83, 62.875), 6, 8);
-    let doge_atlas_h = texture_atlases.add(doge_atlas);
-
-    commands
-        .spawn_bundle(SpriteSheetBundle {
-            texture_atlas: doge_atlas_h,
-            transform: Transform {
-                translation: Vec3::new(-400., -200., 10.),
-                scale: Vec3::splat(0.8),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Animation {
-            timer: Timer::from_seconds(0.02, true),
             count: None,
         })
         .insert(Coin);

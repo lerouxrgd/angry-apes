@@ -36,6 +36,7 @@ fn main() {
         .add_system(move_unit)
         .add_system(animate_unit_sprites)
         .add_system(animate_coins)
+        .add_system(move_ape)
         .add_system(trigger_ape_attack)
         .add_system(animate_ape_attack)
         .add_stage_before(
@@ -65,6 +66,16 @@ fn setup(
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
+
+fn move_ape(time: Res<Time>, mut ape_q: Query<&mut Transform, With<Ape>>) {
+    for mut transform in ape_q.iter_mut() {
+        if (time.time_since_startup().as_secs() / 5) % 2 == 0 {
+            transform.translation.x -= 60. * time.delta_seconds();
+        } else {
+            transform.translation.x += 60. * time.delta_seconds();
+        }
+    }
+}
 
 fn trigger_ape_attack(
     time: Res<Time>,

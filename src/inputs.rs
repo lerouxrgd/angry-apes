@@ -240,26 +240,6 @@ pub fn keyboard_input(
             orientation,
         });
     }
-    // TODO: remove this later, it is just to test wound anim
-    else if keys.just_pressed(KeyCode::Key2) || keys.just_released(KeyCode::Key2) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
-            player_q.single();
-
-        match *unit_state {
-            UnitState::Attack | UnitState::Wound => return,
-            UnitState::Stand | UnitState::Move => (),
-        }
-
-        commands.entity(player).remove::<Movements>();
-        ev_unit_changed.send(UnitChanged {
-            unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
-            new_state: UnitState::Wound,
-            new_condition: unit_condition,
-            orientation,
-        });
-    }
 }
 
 pub fn keyboard_direction_pressed(keys: &Input<KeyCode>) -> bool {

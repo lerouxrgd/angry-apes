@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+////////////////////////////////////// Components //////////////////////////////////////
+
 pub enum InputKind {
     Keyboard,
     Gamepad,
@@ -10,6 +12,135 @@ impl Default for InputKind {
         Self::Keyboard
     }
 }
+
+#[derive(PartialEq, Eq, Hash, Component)]
+pub enum Moving {
+    Left,
+    Up,
+    Down,
+    Right,
+}
+
+#[derive(Component)]
+pub struct Movements(pub HashSet<Moving>);
+
+impl Movements {
+    pub fn from_keyboard(keys: &Input<KeyCode>) -> Self {
+        let mut movements = HashSet::with_capacity(4);
+
+        if keys.pressed(KeyCode::Left) {
+            movements.insert(Moving::Left);
+        }
+        if keys.pressed(KeyCode::Up) {
+            movements.insert(Moving::Up);
+        }
+        if keys.pressed(KeyCode::Down) {
+            movements.insert(Moving::Down);
+        }
+        if keys.pressed(KeyCode::Right) {
+            movements.insert(Moving::Right);
+        }
+
+        Self(movements)
+    }
+
+    pub fn from_gamepad(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> Self {
+        let mut movements = HashSet::with_capacity(4);
+
+        let left_dpad_x = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::DPadX))
+            .unwrap();
+        let left_dpad_y = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::DPadY))
+            .unwrap();
+        let left_stick_x = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+            .unwrap();
+        let left_stick_y = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickY))
+            .unwrap();
+
+        if left_dpad_x == 1. {
+            movements.insert(Moving::Right);
+        }
+        if left_dpad_x == -1. {
+            movements.insert(Moving::Left);
+        }
+        if left_dpad_y == 1. {
+            movements.insert(Moving::Up);
+        }
+        if left_dpad_y == -1. {
+            movements.insert(Moving::Down);
+        }
+
+        if left_stick_x > 0.01 {
+            movements.insert(Moving::Right);
+        }
+        if left_stick_x < -0.01 {
+            movements.insert(Moving::Left);
+        }
+        if left_stick_y > 0.01 {
+            movements.insert(Moving::Up);
+        }
+        if left_stick_y < -0.01 {
+            movements.insert(Moving::Down);
+        }
+
+        Self(movements)
+    }
+}
+
+#[derive(Clone, Copy, Component)]
+pub enum Orientation {
+    Left,
+    Right,
+}
+
+impl Orientation {
+    pub fn from_keyboard(keys: &Input<KeyCode>) -> Option<Self> {
+        if keys.just_pressed(KeyCode::Left) && !keys.pressed(KeyCode::Right) {
+            Some(Self::Left)
+        } else if keys.just_pressed(KeyCode::Right) && !keys.pressed(KeyCode::Left) {
+            Some(Self::Right)
+        } else if keys.pressed(KeyCode::Left) && keys.just_released(KeyCode::Right) {
+            Some(Self::Left)
+        } else if keys.pressed(KeyCode::Right) && keys.just_released(KeyCode::Left) {
+            Some(Self::Right)
+        } else {
+            None
+        }
+    }
+
+    pub fn from_gamepad(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> Option<Self> {
+        let left_dpad_x = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::DPadX))
+            .unwrap();
+        let left_stick_x = axes
+            .get(GamepadAxis(gamepad, GamepadAxisType::LeftStickX))
+            .unwrap();
+
+        if left_dpad_x == 1. {
+            Some(Self::Right)
+        } else if left_dpad_x == -1. {
+            Some(Self::Left)
+        } else if left_stick_x > 0.01 {
+            Some(Self::Right)
+        } else if left_stick_x < -0.01 {
+            Some(Self::Left)
+        } else {
+            None
+        }
+    }
+
+    pub fn flip_x(&self) -> bool {
+        match self {
+            Self::Right => false,
+            Self::Left => true,
+        }
+    }
+}
+
+/////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub fn keyboard_input(
     input_kind: Res<InputKind>,

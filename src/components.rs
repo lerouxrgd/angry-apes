@@ -6,24 +6,38 @@ pub struct Player;
 #[derive(Clone, Component)]
 pub struct UnitAnimations {
     pub stand_h: Handle<TextureAtlas>,
+    pub stand_upgraded_h: Handle<TextureAtlas>,
     pub stand_timer: Timer,
     pub move_h: Handle<TextureAtlas>,
+    pub move_upgraded_h: Handle<TextureAtlas>,
     pub move_timer: Timer,
     pub attack_h: Handle<TextureAtlas>,
+    pub attack_upgraded_h: Handle<TextureAtlas>,
     pub attack_timer: Timer,
     pub attack_count: usize,
     pub wound_h: Handle<TextureAtlas>,
+    pub wound_upgraded_h: Handle<TextureAtlas>,
     pub wound_timer: Timer,
     pub wound_count: usize,
 }
 
 impl UnitAnimations {
-    pub fn atlas_for(&self, u_state: &UnitState) -> Handle<TextureAtlas> {
-        match u_state {
-            UnitState::Stand => self.stand_h.clone(),
-            UnitState::Move => self.move_h.clone(),
-            UnitState::Attack => self.attack_h.clone(),
-            UnitState::Wound => self.wound_h.clone(),
+    pub fn atlas_for(
+        &self,
+        u_state: &UnitState,
+        u_condition: &UnitCondition,
+    ) -> Handle<TextureAtlas> {
+        match (u_state, u_condition) {
+            // Normal
+            (UnitState::Stand, UnitCondition::Normal) => self.stand_h.clone(),
+            (UnitState::Move, UnitCondition::Normal) => self.move_h.clone(),
+            (UnitState::Attack, UnitCondition::Normal) => self.attack_h.clone(),
+            (UnitState::Wound, UnitCondition::Normal) => self.wound_h.clone(),
+            // Upgraded
+            (UnitState::Stand, UnitCondition::Upgraded) => self.stand_upgraded_h.clone(),
+            (UnitState::Move, UnitCondition::Upgraded) => self.move_upgraded_h.clone(),
+            (UnitState::Attack, UnitCondition::Upgraded) => self.attack_upgraded_h.clone(),
+            (UnitState::Wound, UnitCondition::Upgraded) => self.wound_upgraded_h.clone(),
         }
     }
 
@@ -54,12 +68,19 @@ pub enum UnitState {
 }
 
 #[derive(Component)]
-pub struct UnitStateChanged {
+pub struct UnitChanged {
     pub unit: Entity,
     pub unit_sprite: Entity,
     pub unit_anims: UnitAnimations,
     pub new_state: UnitState,
+    pub new_condition: UnitCondition,
     pub orientation: Orientation,
+}
+
+#[derive(Clone, Copy, Component)]
+pub enum UnitCondition {
+    Normal,
+    Upgraded,
 }
 
 #[derive(Component)]

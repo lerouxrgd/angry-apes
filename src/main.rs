@@ -55,6 +55,7 @@ fn main() {
         .add_system(animate_eth)
         .add_system(player_collects_eth)
         .add_system(player_eth_gauge)
+        .add_system(decay_player_eth)
         // Ape related
         .add_system(move_ape)
         .add_system(trigger_ape_attack)
@@ -62,11 +63,12 @@ fn main() {
         // Process updates
         .add_stage_before(
             CoreStage::PostUpdate,
-            "update_unit_states",
+            "update_units",
             SystemStage::parallel(),
         )
-        .add_system_to_stage("update_unit_states", update_unit_states)
-        .init_resource::<Events<UnitStateChanged>>()
+        .add_system_to_stage("update_units", update_units)
+        .insert_resource(EthPicked(Instant::now()))
+        .init_resource::<Events<UnitChanged>>()
         .init_resource::<InputKind>()
         .run();
 }
@@ -159,17 +161,19 @@ fn animate_ape_attack(
 fn animate_unit_sprites(
     time: Res<Time>,
     texture_atlases: Res<Assets<TextureAtlas>>,
-    mut ev_unit_states: EventWriter<UnitStateChanged>,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
     units_q: Query<(
         Entity,
         &UnitSprite,
         &UnitState,
+        &UnitCondition,
         &UnitAnimations,
         &Orientation,
     )>,
     mut sprites_q: Query<(&mut Animation, &mut TextureAtlasSprite)>,
 ) {
-    for (unit, unit_sprite, unit_state, unit_anims, &orientation) in units_q.iter() {
+    for (unit, unit_sprite, unit_state, &unit_condition, unit_anims, &orientation) in units_q.iter()
+    {
         let (mut anim, mut sprite) = sprites_q.get_mut(unit_sprite.0).unwrap();
 
         anim.timer.tick(time.delta());
@@ -183,17 +187,18 @@ fn animate_unit_sprites(
                 if *count != 0 {
                     *count -= 1;
                     let texture_atlas = texture_atlases
-                        .get(unit_anims.atlas_for(unit_state))
+                        .get(unit_anims.atlas_for(unit_state, &unit_condition))
                         .unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 }
                 // Animation is finished
                 else {
-                    ev_unit_states.send(UnitStateChanged {
+                    ev_unit_changed.send(UnitChanged {
                         unit,
                         unit_sprite: unit_sprite.0,
                         unit_anims: unit_anims.clone(),
                         new_state: UnitState::Stand, // TODO: make some state transistion logic
+                        new_condition: unit_condition,
                         orientation,
                     });
                     continue;
@@ -202,7 +207,7 @@ fn animate_unit_sprites(
             // This is an infinite animation
             None => {
                 let texture_atlas = texture_atlases
-                    .get(unit_anims.atlas_for(unit_state))
+                    .get(unit_anims.atlas_for(unit_state, &unit_condition))
                     .unwrap();
                 sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 sprite.flip_x = orientation.flip_x();
@@ -211,20 +216,25 @@ fn animate_unit_sprites(
     }
 }
 
-fn update_unit_states(
-    mut commands: Commands,
-    mut ev_unit_states: ResMut<Events<UnitStateChanged>>,
-) {
-    for UnitStateChanged {
+fn update_units(mut commands: Commands, mut ev_unit_changed: ResMut<Events<UnitChanged>>) {
+    for UnitChanged {
         unit,
         unit_sprite,
         unit_anims,
         new_state,
+        new_condition,
         orientation,
-    } in ev_unit_states.drain()
+    } in ev_unit_changed.drain()
     {
         commands.entity(unit_sprite).despawn();
-        let unit_sprite = spawn_unit_sprite(&mut commands, &unit_anims, &new_state, &orientation);
+        let unit_sprite = spawn_unit_sprite(
+            &mut commands,
+            &unit_anims,
+            &new_state,
+            &new_condition,
+            &orientation,
+        );
+
         commands
             .entity(unit)
             .push_children(&[unit_sprite])

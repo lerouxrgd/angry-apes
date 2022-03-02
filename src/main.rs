@@ -103,6 +103,7 @@ fn setup(
     spawn_platform(&mut commands, &asset_server);
 
     spawn_player(&mut commands, &asset_server, &mut texture_atlases);
+    init_ape_icon(&mut commands, &asset_server);
     spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
 
     init_eth_handle(&mut commands, &asset_server, &mut texture_atlases);

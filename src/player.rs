@@ -31,6 +31,16 @@ pub fn spawn_player(
     let wound_timer = Timer::from_seconds(0.13, true);
     let wound_count = 3;
 
+    let jump_image = asset_server.load("Paladin__JUMP.png");
+    let jump_atlas = TextureAtlas::from_grid(jump_image, Vec2::new(65.0, 107.0), 1, 1);
+    let jump_h = texture_atlases.add(jump_atlas);
+    let jump_timer = Timer::from_seconds(0.1, true);
+
+    let dash_image = asset_server.load("Paladin__DASH.png");
+    let dash_atlas = TextureAtlas::from_grid(dash_image, Vec2::new(65.0, 107.0), 1, 1);
+    let dash_h = texture_atlases.add(dash_atlas);
+    let dash_timer = Timer::from_seconds(0.15, true);
+
     // Sprites for UnitCondition::Upgraded
 
     let stand_upgraded_image = asset_server.load("Crusader__STAND.png");
@@ -53,6 +63,14 @@ pub fn spawn_player(
         TextureAtlas::from_grid(wound_upgraded_image, Vec2::new(110.0, 127.0), 3, 1);
     let wound_upgraded_h = texture_atlases.add(wound_upgraded_atlas);
 
+    let jump_upgraded_image = asset_server.load("Crusader__JUMP.png");
+    let jump_upgraded_atlas = TextureAtlas::from_grid(jump_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
+    let jump_upgraded_h = texture_atlases.add(jump_upgraded_atlas);
+
+    let dash_upgraded_image = asset_server.load("Crusader__DASH.png");
+    let dash_upgraded_atlas = TextureAtlas::from_grid(dash_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
+    let dash_upgraded_h = texture_atlases.add(dash_upgraded_atlas);
+
     // Spawn player initial sprite
 
     let unit_anims = UnitAnimations {
@@ -70,6 +88,12 @@ pub fn spawn_player(
         wound_upgraded_h,
         wound_timer,
         wound_count,
+        jump_h,
+        jump_upgraded_h,
+        jump_timer,
+        dash_h,
+        dash_upgraded_h,
+        dash_timer,
     };
     let unit_state = UnitState::Stand;
     let unit_condition = UnitCondition::Normal;
@@ -92,6 +116,9 @@ pub fn spawn_player(
             scale: Vec3::splat(1.5),
             translation: Vec3::new(0., -170., 999.),
             ..Default::default()
+        })
+        .insert(Gravity {
+            vy: 0.,
         })
         .insert(unit_anims)
         .insert(unit_state)
@@ -147,6 +174,12 @@ pub struct UnitAnimations {
     pub wound_upgraded_h: Handle<TextureAtlas>,
     pub wound_timer: Timer,
     pub wound_count: usize,
+    pub jump_h: Handle<TextureAtlas>,
+    pub jump_upgraded_h: Handle<TextureAtlas>,
+    pub jump_timer: Timer,
+    pub dash_h: Handle<TextureAtlas>,
+    pub dash_upgraded_h: Handle<TextureAtlas>,
+    pub dash_timer: Timer,
 }
 
 impl UnitAnimations {
@@ -161,11 +194,15 @@ impl UnitAnimations {
             (UnitState::Move, UnitCondition::Normal) => self.move_h.clone(),
             (UnitState::Attack, UnitCondition::Normal) => self.attack_h.clone(),
             (UnitState::Wound, UnitCondition::Normal) => self.wound_h.clone(),
+            (UnitState::Jump, UnitCondition::Normal) => self.jump_h.clone(),
+            (UnitState::Dash, UnitCondition::Normal) => self.dash_h.clone(),
             // Upgraded
             (UnitState::Stand, UnitCondition::Upgraded) => self.stand_upgraded_h.clone(),
             (UnitState::Move, UnitCondition::Upgraded) => self.move_upgraded_h.clone(),
             (UnitState::Attack, UnitCondition::Upgraded) => self.attack_upgraded_h.clone(),
             (UnitState::Wound, UnitCondition::Upgraded) => self.wound_upgraded_h.clone(),
+            (UnitState::Jump, UnitCondition::Upgraded) => self.jump_upgraded_h.clone(),
+            (UnitState::Dash, UnitCondition::Upgraded) => self.dash_upgraded_h.clone(),
         }
     }
 
@@ -175,14 +212,17 @@ impl UnitAnimations {
             UnitState::Move => self.move_timer.clone(),
             UnitState::Attack => self.attack_timer.clone(),
             UnitState::Wound => self.wound_timer.clone(),
+            UnitState::Jump => self.jump_timer.clone(),
+            UnitState::Dash => self.dash_timer.clone(),
         }
     }
 
     pub fn count_for(&self, u_state: &UnitState) -> Option<usize> {
         match u_state {
-            UnitState::Stand | UnitState::Move => None,
+            UnitState::Stand | UnitState::Move | UnitState::Jump => None,
             UnitState::Attack => Some(self.attack_count),
             UnitState::Wound => Some(self.wound_count),
+            UnitState::Dash => Some(1),
         }
     }
 }
@@ -193,6 +233,8 @@ pub enum UnitState {
     Move,
     Attack,
     Wound,
+    Jump,
+    Dash,
 }
 
 #[derive(Component)]
@@ -214,10 +256,16 @@ pub enum UnitCondition {
 #[derive(Component)]
 pub struct UnitSprite(pub Entity);
 
+#[derive(Component)]
+pub struct Gravity {
+    pub vy: f32,
+}
+
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub fn animate_unit_sprites(
     time: Res<Time>,
+    mut commands: Commands,
     texture_atlases: Res<Assets<TextureAtlas>>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
     units_q: Query<(
@@ -251,6 +299,7 @@ pub fn animate_unit_sprites(
                 }
                 // Animation is finished
                 else {
+                    commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit,
                         unit_sprite: unit_sprite.0,
@@ -298,18 +347,91 @@ pub fn update_units(mut commands: Commands, mut ev_unit_changed: ResMut<Events<U
             .push_children(&[unit_sprite])
             .insert(UnitSprite(unit_sprite))
             .insert(new_state);
+
+        match new_state {
+            UnitState::Jump => {
+                commands.entity(unit).insert(Gravity { vy: 500. });
+            },
+            _ => (),
+        }
     }
 }
 
-pub fn move_unit(time: Res<Time>, mut sprite_q: Query<(&mut Transform, &Movements)>) {
-    for (mut transform, movements) in sprite_q.iter_mut() {
+pub fn move_unit(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transform, &Movements)>) {
+    for (unit_state, mut transform, movements) in units_q.iter_mut() {
         for moving in movements.0.iter() {
+            let velocity = match *unit_state {
+                UnitState::Dash => 600.,
+                _ => 150.,
+            };
+
             match moving {
-                Moving::Left => transform.translation.x -= 150. * time.delta_seconds(),
-                Moving::Up => transform.translation.y += 150. * time.delta_seconds(),
-                Moving::Down => transform.translation.y -= 150. * time.delta_seconds(),
-                Moving::Right => transform.translation.x += 150. * time.delta_seconds(),
+                Moving::Left => transform.translation.x -= velocity * time.delta_seconds(),
+                Moving::Right => transform.translation.x += velocity * time.delta_seconds(),
+                Moving::Up => (),
+                Moving::Down => (),
+            }
+
+            let wall = 540.;
+            if transform.translation.x < -wall {
+                transform.translation.x = -wall;
+            }
+            if transform.translation.x > wall {
+                transform.translation.x = wall;
             }
         }
     }
 }
+
+pub fn fall_unit(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut units_q: Query<(
+        Entity,
+        &UnitState,
+        &UnitCondition,
+        &UnitAnimations,
+        &UnitSprite,
+        &mut Transform,
+        &mut Gravity,
+        &Orientation,
+    )>
+) {
+    for (
+        unit,
+        unit_state,
+        &unit_condition,
+        unit_anims,
+        unit_sprite,
+        mut transform,
+        mut gravity,
+        &orientation,
+    ) in units_q.iter_mut()
+    {
+        gravity.vy -= 1000. * time.delta_seconds();
+        transform.translation.y += gravity.vy * time.delta_seconds();
+
+        let floor = -170.;
+        if transform.translation.y < floor {
+            transform.translation.y = floor;
+            gravity.vy = 0.;
+
+            match *unit_state {
+                UnitState::Jump => {
+                    commands.entity(unit).remove::<Movements>();
+                    ev_unit_changed.send(UnitChanged {
+                        unit: unit,
+                        unit_sprite: unit_sprite.0,
+                        unit_anims: unit_anims.clone(),
+                        new_state: UnitState::Stand,
+                        new_condition: unit_condition,
+                        orientation,
+                    });
+                }
+                _ => ()
+            }
+        }
+    }
+}
+

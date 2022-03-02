@@ -34,9 +34,7 @@ pub fn spawn_player(
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlas>,
 ) {
-    // TODO: also load crusader sprites
-    // TODO: make a PaladinState::{Normal,Strong} with specific attack/defense
-    // TODO: use it when updating sprites
+    // Sprites for UnitCondition::Normal
 
     let stand_image = asset_server.load("Paladin__STAND.png");
     let stand_atlas = TextureAtlas::from_grid(stand_image, Vec2::new(57.0, 107.0), 11, 1);
@@ -60,21 +58,58 @@ pub fn spawn_player(
     let wound_timer = Timer::from_seconds(0.13, true);
     let wound_count = 3;
 
+    // Sprites for UnitCondition::Upgraded
+
+    let stand_upgraded_image = asset_server.load("Crusader__STAND.png");
+    let stand_upgraded_atlas =
+        TextureAtlas::from_grid(stand_upgraded_image, Vec2::new(57.0, 107.0), 11, 1);
+    let stand_upgraded_h = texture_atlases.add(stand_upgraded_atlas);
+
+    let move_upgraded_image = asset_server.load("Crusader__MOVE.png");
+    let move_upgraded_atlas =
+        TextureAtlas::from_grid(move_upgraded_image, Vec2::new(65.0, 107.0), 8, 1);
+    let move_upgraded_h = texture_atlases.add(move_upgraded_atlas);
+
+    let attack_upgraded_image = asset_server.load("Crusader__ATTACK_1.png");
+    let attack_upgraded_atlas =
+        TextureAtlas::from_grid(attack_upgraded_image, Vec2::new(105.0, 107.0), 5, 1);
+    let attack_upgraded_h = texture_atlases.add(attack_upgraded_atlas);
+
+    let wound_upgraded_image = asset_server.load("Crusader__WOUND.png");
+    let wound_upgraded_atlas =
+        TextureAtlas::from_grid(wound_upgraded_image, Vec2::new(110.0, 127.0), 3, 1);
+    let wound_upgraded_h = texture_atlases.add(wound_upgraded_atlas);
+
+    // Spawn player initial sprite
+
     let unit_anims = UnitAnimations {
         stand_h,
+        stand_upgraded_h,
         stand_timer,
         move_h,
+        move_upgraded_h,
         move_timer,
         attack_h,
+        attack_upgraded_h,
         attack_timer,
         attack_count,
         wound_h,
+        wound_upgraded_h,
         wound_timer,
         wound_count,
     };
     let unit_state = UnitState::Stand;
+    let unit_condition = UnitCondition::Normal;
     let orientation = Orientation::Right;
-    let unit_sprite = spawn_unit_sprite(commands, &unit_anims, &unit_state, &orientation);
+    let unit_sprite = spawn_unit_sprite(
+        commands,
+        &unit_anims,
+        &unit_state,
+        &unit_condition,
+        &orientation,
+    );
+
+    // Spawn player unit
 
     commands
         .spawn()
@@ -87,9 +122,11 @@ pub fn spawn_player(
         })
         .insert(unit_anims)
         .insert(unit_state)
+        .insert(unit_condition)
         .insert(UnitSprite(unit_sprite))
         .push_children(&[unit_sprite])
         .insert(orientation)
+        .insert(unit_condition)
         .insert(EthOwned::default());
 }
 
@@ -97,11 +134,12 @@ pub fn spawn_unit_sprite(
     commands: &mut Commands,
     anims: &UnitAnimations,
     state: &UnitState,
+    condition: &UnitCondition,
     orientation: &Orientation,
 ) -> Entity {
     commands
         .spawn_bundle(SpriteSheetBundle {
-            texture_atlas: anims.atlas_for(state),
+            texture_atlas: anims.atlas_for(state, condition),
             sprite: TextureAtlasSprite {
                 flip_x: orientation.flip_x(),
                 ..Default::default()

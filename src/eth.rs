@@ -5,8 +5,8 @@ pub fn init_eth_handle(
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlas>,
 ) {
-    let eth_handle = asset_server.load("eth.png");
-    let eth_atlas = TextureAtlas::from_grid(eth_handle, Vec2::new(50.0, 50.0), 1, 11);
+    let eth_image = asset_server.load("eth.png");
+    let eth_atlas = TextureAtlas::from_grid(eth_image, Vec2::new(50.0, 50.0), 1, 11);
     let eth_atlas_h = texture_atlases.add(eth_atlas);
 
     commands.insert_resource(EthHandle(eth_atlas_h));
@@ -90,7 +90,7 @@ impl Default for Eth {
 }
 
 #[derive(Component)]
-pub struct EthGauge; // TODO: some enum Filling/Decaying ?
+pub struct EthGauge;
 
 #[derive(Debug, Component)]
 pub struct EthOwned {
@@ -111,38 +111,67 @@ impl EthOwned {
     pub fn add(&mut self, eth: &Eth) {
         self.current = self.max.min(self.current + eth.quantity);
     }
-}
 
-pub struct SomeInstant(pub Instant);
+    pub fn remove(&mut self, decayed: f32) {
+        self.current = (self.current - decayed).max(0.);
+    }
 
-impl Default for SomeInstant {
-    fn default() -> Self {
-        Self(Instant::now())
+    pub fn is_full(&self) -> bool {
+        self.current == self.max
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.current == 0.
     }
 }
+
+pub struct EthPicked(pub Instant);
 
 ////////////////////////////////////////////////////////////////////////////////////////
 
 pub fn make_eth(
     eth_handle: Res<EthHandle>,
+    mut picked_eth_at: ResMut<EthPicked>,
     mut commands: Commands,
     eth_q: Query<Entity, With<Eth>>,
-    mut previous: Local<SomeInstant>,
 ) {
     let eth_count = eth_q.iter().count();
 
-    if eth_count == 0 && previous.0.elapsed() > Duration::from_secs(3) {
+    if eth_count == 0 && picked_eth_at.0.elapsed() > Duration::from_secs(3) {
         spawn_eth(&mut commands, Vec3::new(-300., -222., 10.), &eth_handle);
-        *previous = SomeInstant::default();
+        picked_eth_at.0 = Instant::now();
     }
 }
 
 pub fn player_collects_eth(
+    mut picked_eth_at: ResMut<EthPicked>,
     mut commands: Commands,
-    mut player_q: Query<(&Transform, &mut EthOwned), With<Player>>,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut player_q: Query<
+        (
+            Entity,
+            &Transform,
+            &mut EthOwned,
+            &UnitSprite,
+            &UnitState,
+            &mut UnitCondition,
+            &UnitAnimations,
+            &Orientation,
+        ),
+        With<Player>,
+    >,
     eth_q: Query<(Entity, &Eth, &Transform)>,
 ) {
-    let (player_transform, mut player_eth) = player_q.single_mut();
+    let (
+        player,
+        player_transform,
+        mut player_eth,
+        player_sprite,
+        &player_state,
+        mut player_condition,
+        player_anims,
+        &orientation,
+    ) = player_q.single_mut();
     let player_x = player_transform.translation.x;
 
     for (eth_id, eth, eth_transform) in eth_q.iter() {
@@ -150,15 +179,72 @@ pub fn player_collects_eth(
         if (player_x - eth_x).abs() < 10. {
             player_eth.add(eth);
             commands.entity(eth_id).despawn();
+            picked_eth_at.0 = Instant::now();
+
+            if player_eth.is_full() {
+                let new_condition = UnitCondition::Upgraded;
+                *player_condition = new_condition;
+                ev_unit_changed.send(UnitChanged {
+                    unit: player,
+                    unit_sprite: player_sprite.0,
+                    unit_anims: player_anims.clone(),
+                    new_state: player_state,
+                    new_condition,
+                    orientation,
+                });
+            }
+        }
+    }
+}
+
+pub fn decay_player_eth(
+    time: Res<Time>,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut player_q: Query<
+        (
+            Entity,
+            &mut EthOwned,
+            &UnitSprite,
+            &UnitState,
+            &mut UnitCondition,
+            &UnitAnimations,
+            &Orientation,
+        ),
+        With<Player>,
+    >,
+) {
+    let (
+        player,
+        mut player_eth,
+        player_sprite,
+        &player_state,
+        mut player_condition,
+        player_anims,
+        &orientation,
+    ) = player_q.single_mut();
+
+    if let UnitCondition::Upgraded = &*player_condition {
+        player_eth.remove(2. * time.delta_seconds());
+        if player_eth.is_empty() {
+            let new_condition = UnitCondition::Normal;
+            *player_condition = new_condition;
+            ev_unit_changed.send(UnitChanged {
+                unit: player,
+                unit_sprite: player_sprite.0,
+                unit_anims: player_anims.clone(),
+                new_state: player_state,
+                new_condition,
+                orientation,
+            });
         }
     }
 }
 
 pub fn player_eth_gauge(
-    player_q: Query<&EthOwned, With<Player>>,
-    mut gauge_q: Query<&mut TessPath, With<EthGauge>>,
+    player_q: Query<(&EthOwned, &UnitCondition), With<Player>>,
+    mut gauge_q: Query<(&mut TessPath, &mut DrawMode), With<EthGauge>>,
 ) {
-    let player_eth = player_q.single();
+    let (player_eth, player_condition) = player_q.single();
 
     let rect_x = player_eth.current / player_eth.max * (250. - 3.);
     let mut path_builder = tess::path::Path::builder();
@@ -168,8 +254,13 @@ pub fn player_eth_gauge(
     };
     rect.add_geometry(&mut path_builder);
 
-    let mut gauge_path = gauge_q.single_mut();
+    let (mut gauge_path, mut draw) = gauge_q.single_mut();
+
     *gauge_path = TessPath(path_builder.build());
+    *draw = match player_condition {
+        UnitCondition::Normal => DrawMode::Fill(FillMode::color(Color::rgb_u8(132, 132, 132))),
+        UnitCondition::Upgraded => DrawMode::Fill(FillMode::color(Color::rgb_u8(200, 160, 24))),
+    }
 }
 
 pub fn animate_eth(

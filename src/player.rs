@@ -406,7 +406,7 @@ pub fn unit_attacks_ape(
     mut commands: Commands,
     mut ev_unit_attack: ResMut<Events<UnitAttack>>,
     ape_icon: Res<ApeIconHandle>,
-    unit_q: Query<(&Transform, &UnitCondition), With<Player>>,
+    units_q: Query<(&Transform, &UnitCondition)>,
     mut apes_q: Query<
         (
             Entity,
@@ -419,7 +419,7 @@ pub fn unit_attacks_ape(
     >,
 ) {
     for UnitAttack(unit) in ev_unit_attack.drain() {
-        let (unit_transform, unit_condition) = match unit_q.get(unit) {
+        let (unit_transform, unit_condition) = match units_q.get(unit) {
             Ok(q_res) => q_res,
             Err(_) => return,
         };

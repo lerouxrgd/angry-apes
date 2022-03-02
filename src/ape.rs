@@ -149,6 +149,47 @@ pub fn spawn_ape_damaged_anim(
     anim
 }
 
+pub fn spawn_dead_apes_counter(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    font_handle: Handle<Font>,
+) {
+    commands.insert_resource(DeadApesCounter(0));
+
+    let icon = commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("ape_icon_dead.png"),
+            transform: Transform {
+                scale: Vec3::splat(0.15),
+                translation: Vec3::new(505., 275., 999.),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .id();
+
+    let count = commands
+        .spawn_bundle(Text2dBundle {
+            text: Text::with_section(
+                "0",
+                TextStyle {
+                    font: font_handle.clone(),
+                    font_size: 280.0,
+                    color: Color::WHITE,
+                },
+                TextAlignment {
+                    vertical: VerticalAlign::Center,
+                    horizontal: HorizontalAlign::Left,
+                },
+            ),
+            transform: Transform::from_xyz(165., -25., 0.),
+            ..Default::default()
+        })
+        .insert(DeadApesText)
+        .id();
+    commands.entity(icon).push_children(&[count]);
+}
+
 ////////////////////////////////////// Components //////////////////////////////////////
 
 #[derive(Component)]
@@ -217,6 +258,11 @@ impl ApeLife {
         self.current = (self.current - amount).max(0.);
     }
 }
+
+#[derive(Component)]
+pub struct DeadApesText;
+
+pub struct DeadApesCounter(usize);
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
@@ -344,6 +390,7 @@ pub fn animate_apes_attacks(
 pub fn animate_apes_wounds(
     time: Res<Time>,
     texture_atlases: Res<Assets<TextureAtlas>>,
+    mut dead_counter: ResMut<DeadApesCounter>,
     mut commands: Commands,
     mut wounds_q: Query<(
         Entity,
@@ -371,6 +418,7 @@ pub fn animate_apes_wounds(
                 else {
                     commands.entity(anim_id).despawn_recursive();
                     if life.current == 0. {
+                        dead_counter.0 += 1;
                         commands.entity(ape.0).despawn_recursive();
                     }
                 }
@@ -378,4 +426,12 @@ pub fn animate_apes_wounds(
             None => unreachable!(),
         }
     }
+}
+
+pub fn display_dead_apes_counter(
+    counter: Res<DeadApesCounter>,
+    mut text_q: Query<&mut Text, With<DeadApesText>>,
+) {
+    let mut text = text_q.single_mut();
+    text.sections[0].value = counter.0.to_string();
 }

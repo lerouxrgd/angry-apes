@@ -78,6 +78,7 @@ fn main() {
         .add_system(ape_attacks_player_collision)
         .add_system(animate_apes_attacks)
         .add_system(animate_apes_wounds)
+        .add_system(display_dead_apes_counter)
         // Process unit changes
         .add_stage_before(
             CoreStage::PostUpdate,
@@ -103,7 +104,10 @@ fn setup(
     spawn_platform(&mut commands, &asset_server);
 
     spawn_player(&mut commands, &asset_server, &mut texture_atlases);
+
+    let font_handle = spawn_font(&asset_server);
     init_ape_icon(&mut commands, &asset_server);
+    spawn_dead_apes_counter(&mut commands, &asset_server, font_handle);
     spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
 
     init_eth_handle(&mut commands, &asset_server, &mut texture_atlases);

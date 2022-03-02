@@ -31,6 +31,11 @@ pub fn spawn_camera(commands: &mut Commands) {
     commands.spawn_bundle(camera);
 }
 
+pub fn spawn_font(asset_server: &AssetServer) -> Handle<Font> {
+    let font_handle: Handle<Font> = asset_server.load("FontsFree-Net-Monkey.ttf");
+    font_handle
+}
+
 ////////////////////////////////////// Components //////////////////////////////////////
 
 #[derive(Component)]

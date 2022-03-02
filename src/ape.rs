@@ -7,6 +7,9 @@ pub fn spawn_ape(
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlas>,
 ) {
+    let ape_wound_image = asset_server.load("ape_king_wound.png");
+    let ape_wound_atlas = TextureAtlas::from_grid(ape_wound_image, Vec2::new(600., 600.), 3, 1);
+
     let ape = commands
         .spawn()
         .insert(Ape)
@@ -19,6 +22,8 @@ pub fn spawn_ape(
             },
             ..Default::default()
         })
+        .insert(ApeWoundHandle(texture_atlases.add(ape_wound_atlas)))
+        .insert(ApeWoundWidth(170. * 0.8))
         .id();
 
     let attack_range = ApeAttackRange::new(350., 155.)
@@ -45,7 +50,7 @@ pub fn spawn_ape(
     commands.entity(ape).insert(ape_attack_spec);
 }
 
-pub fn spawn_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
+pub fn spawn_ape_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
     let ApeAttackSpec {
         ape_entity,
         init_duration,
@@ -69,7 +74,7 @@ pub fn spawn_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
     commands.entity(ape_entity.0).push_children(&[animation]);
 }
 
-pub fn spawn_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
+pub fn spawn_ape_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
     let ApeAttackSpec {
         ape_entity,
         on_duration,
@@ -92,6 +97,21 @@ pub fn spawn_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
     commands.entity(ape_entity.0).push_children(&[animation]);
 }
 
+pub fn spawn_ape_damaged_anim(commands: &mut Commands, wound_h: &ApeWoundHandle) -> Entity {
+    commands
+        .spawn_bundle(SpriteSheetBundle {
+            texture_atlas: wound_h.0.clone(),
+            transform: Transform::from_xyz(0., 0., 9.),
+            ..Default::default()
+        })
+        .insert(Animation {
+            timer: Timer::from_seconds(0.08, true),
+            count: Some(4),
+        })
+        .insert(wound_h.clone())
+        .id()
+}
+
 ////////////////////////////////////// Components //////////////////////////////////////
 
 #[derive(Component)]
@@ -99,6 +119,12 @@ pub struct Ape;
 
 #[derive(Clone, Copy, Component)]
 pub struct ApeEntity(pub Entity);
+
+#[derive(Clone, Component)]
+pub struct ApeWoundHandle(pub Handle<TextureAtlas>);
+
+#[derive(Component)]
+pub struct ApeWoundWidth(pub f32);
 
 #[derive(Component)]
 pub struct ApeAttackSpec {
@@ -159,7 +185,7 @@ pub fn trigger_ape_attack(
     trigger.0.tick(time.delta());
     if trigger.0.just_finished() {
         let attack_spec = apes_q.single();
-        spawn_attack_init(&mut commands, &attack_spec);
+        spawn_ape_attack_init(&mut commands, &attack_spec);
     }
 }
 
@@ -236,7 +262,7 @@ pub fn animate_apes_attacks(
 
                 if duration.finished() {
                     commands.entity(id).despawn();
-                    spawn_attack_on(&mut commands, &attack_spec);
+                    spawn_ape_attack_on(&mut commands, &attack_spec);
                 } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
@@ -253,6 +279,40 @@ pub fn animate_apes_attacks(
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 }
             }
+        }
+    }
+}
+
+pub fn animate_apes_wounds(
+    time: Res<Time>,
+    texture_atlases: Res<Assets<TextureAtlas>>,
+    mut commands: Commands,
+    mut wounds_q: Query<(
+        Entity,
+        &mut Animation,
+        &mut TextureAtlasSprite,
+        &ApeWoundHandle,
+    )>,
+) {
+    for (anim_id, mut anim, mut sprite, atlas_h) in wounds_q.iter_mut() {
+        anim.timer.tick(time.delta());
+        if !anim.timer.just_finished() {
+            continue;
+        }
+
+        match anim.count.as_mut() {
+            Some(count) => {
+                if *count != 0 {
+                    *count -= 1;
+                    let texture_atlas = texture_atlases.get(atlas_h.0.clone()).unwrap();
+                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+                }
+                // Animation is finished
+                else {
+                    commands.entity(anim_id).despawn();
+                }
+            }
+            None => unreachable!(),
         }
     }
 }

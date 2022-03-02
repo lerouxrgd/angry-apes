@@ -64,11 +64,13 @@ pub fn spawn_player(
     let wound_upgraded_h = texture_atlases.add(wound_upgraded_atlas);
 
     let jump_upgraded_image = asset_server.load("Crusader__JUMP.png");
-    let jump_upgraded_atlas = TextureAtlas::from_grid(jump_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
+    let jump_upgraded_atlas =
+        TextureAtlas::from_grid(jump_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
     let jump_upgraded_h = texture_atlases.add(jump_upgraded_atlas);
 
     let dash_upgraded_image = asset_server.load("Crusader__DASH.png");
-    let dash_upgraded_atlas = TextureAtlas::from_grid(dash_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
+    let dash_upgraded_atlas =
+        TextureAtlas::from_grid(dash_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
     let dash_upgraded_h = texture_atlases.add(dash_upgraded_atlas);
 
     // Spawn player initial sprite
@@ -117,9 +119,7 @@ pub fn spawn_player(
             translation: Vec3::new(0., -170., 999.),
             ..Default::default()
         })
-        .insert(Gravity {
-            vy: 0.,
-        })
+        .insert(Gravity { vy: 0. })
         .insert(unit_anims)
         .insert(unit_state)
         .insert(unit_condition)
@@ -261,6 +261,8 @@ pub struct Gravity {
     pub vy: f32,
 }
 
+pub struct UnitAttack(pub Entity);
+
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub fn animate_unit_sprites(
@@ -268,6 +270,7 @@ pub fn animate_unit_sprites(
     mut commands: Commands,
     texture_atlases: Res<Assets<TextureAtlas>>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut ev_unit_attack: EventWriter<UnitAttack>,
     units_q: Query<(
         Entity,
         &UnitSprite,
@@ -275,10 +278,12 @@ pub fn animate_unit_sprites(
         &UnitCondition,
         &UnitAnimations,
         &Orientation,
+        Option<&Player>,
     )>,
     mut sprites_q: Query<(&mut Animation, &mut TextureAtlasSprite)>,
 ) {
-    for (unit, unit_sprite, unit_state, &unit_condition, unit_anims, &orientation) in units_q.iter()
+    for (unit, unit_sprite, unit_state, &unit_condition, unit_anims, &orientation, is_player) in
+        units_q.iter()
     {
         let (mut anim, mut sprite) = sprites_q.get_mut(unit_sprite.0).unwrap();
 
@@ -296,6 +301,11 @@ pub fn animate_unit_sprites(
                         .get(unit_anims.atlas_for(unit_state, &unit_condition))
                         .unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+
+                    if *count == 1 && matches!(unit_state, UnitState::Attack) && is_player.is_some()
+                    {
+                        ev_unit_attack.send(UnitAttack(unit));
+                    }
                 }
                 // Animation is finished
                 else {
@@ -351,7 +361,7 @@ pub fn update_units(mut commands: Commands, mut ev_unit_changed: ResMut<Events<U
         match new_state {
             UnitState::Jump => {
                 commands.entity(unit).insert(Gravity { vy: 500. });
-            },
+            }
             _ => (),
         }
     }
@@ -383,55 +393,29 @@ pub fn move_unit(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transform
     }
 }
 
-pub fn fall_unit(
-    time: Res<Time>,
+pub fn unit_attacks_ape(
     mut commands: Commands,
-    mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut units_q: Query<(
-        Entity,
-        &UnitState,
-        &UnitCondition,
-        &UnitAnimations,
-        &UnitSprite,
-        &mut Transform,
-        &mut Gravity,
-        &Orientation,
-    )>
+    mut ev_unit_attack: ResMut<Events<UnitAttack>>,
+    unit_q: Query<(&Transform, &UnitCondition), With<Player>>,
+    apes_q: Query<(Entity, &Transform, &ApeWoundWidth, &ApeWoundHandle), With<Ape>>,
 ) {
-    for (
-        unit,
-        unit_state,
-        &unit_condition,
-        unit_anims,
-        unit_sprite,
-        mut transform,
-        mut gravity,
-        &orientation,
-    ) in units_q.iter_mut()
-    {
-        gravity.vy -= 1000. * time.delta_seconds();
-        transform.translation.y += gravity.vy * time.delta_seconds();
+    for UnitAttack(unit) in ev_unit_attack.drain() {
+        let (unit_transform, _unit_condition) = match unit_q.get(unit) {
+            Ok(q_res) => q_res,
+            Err(_) => return,
+        };
 
-        let floor = -170.;
-        if transform.translation.y < floor {
-            transform.translation.y = floor;
-            gravity.vy = 0.;
+        let unit_x = unit_transform.translation.x;
+        for (ape, ape_transform, ape_wound_width, ape_wound_h) in apes_q.iter() {
+            let ape_x = ape_transform.translation.x;
 
-            match *unit_state {
-                UnitState::Jump => {
-                    commands.entity(unit).remove::<Movements>();
-                    ev_unit_changed.send(UnitChanged {
-                        unit: unit,
-                        unit_sprite: unit_sprite.0,
-                        unit_anims: unit_anims.clone(),
-                        new_state: UnitState::Stand,
-                        new_condition: unit_condition,
-                        orientation,
-                    });
-                }
-                _ => ()
+            let close_enough = (unit_x - ape_x).abs() < ape_wound_width.0;
+            if close_enough {
+                let wound_anim = spawn_ape_damaged_anim(&mut commands, ape_wound_h);
+                commands.entity(ape).push_children(&[wound_anim]);
+
+                // TODO: also do some damages to the ape, base on unit_condition
             }
         }
     }
 }
-

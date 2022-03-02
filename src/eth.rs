@@ -140,7 +140,7 @@ pub fn make_eth(
     let eth_count = eth_q.iter().count();
 
     if eth_count == 0 && picked_eth_at.0.elapsed() > Duration::from_secs(3) {
-        spawn_eth(&mut commands, Vec3::new(-300., -222., 10.), &eth_handle);
+        spawn_eth(&mut commands, Vec3::new(-300., -222., 20.), &eth_handle);
     }
 }
 

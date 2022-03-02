@@ -65,6 +65,7 @@ fn main() {
         .add_system(move_unit)
         .add_system(fall_unit)
         .add_system(animate_unit_sprites)
+        .add_system(unit_attacks_ape)
         // Eth related
         .add_system(make_eth)
         .add_system(animate_eth)
@@ -76,6 +77,7 @@ fn main() {
         .add_system(trigger_ape_attack)
         .add_system(ape_attacks_player_collision)
         .add_system(animate_apes_attacks)
+        .add_system(animate_apes_wounds)
         // Process unit changes
         .add_stage_before(
             CoreStage::PostUpdate,
@@ -86,6 +88,7 @@ fn main() {
         // Game logic resources
         .insert_resource(EthPicked(Instant::now()))
         .init_resource::<Events<UnitChanged>>()
+        .init_resource::<Events<UnitAttack>>()
         .init_resource::<InputKind>()
         .run();
 }

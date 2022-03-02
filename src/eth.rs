@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+/////////////////////////////////////// Spawners ///////////////////////////////////////
+
 pub fn init_eth_handle(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -74,7 +76,7 @@ pub fn spawn_ethbar(commands: &mut Commands, asset_server: &AssetServer) {
     commands.entity(outer).push_children(&[inner]);
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////// Components //////////////////////////////////////
 
 pub struct EthHandle(pub Handle<TextureAtlas>);
 
@@ -127,11 +129,11 @@ impl EthOwned {
 
 pub struct EthPicked(pub Instant);
 
-////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub fn make_eth(
     eth_handle: Res<EthHandle>,
-    mut picked_eth_at: ResMut<EthPicked>,
+    picked_eth_at: Res<EthPicked>,
     mut commands: Commands,
     eth_q: Query<Entity, With<Eth>>,
 ) {
@@ -139,7 +141,6 @@ pub fn make_eth(
 
     if eth_count == 0 && picked_eth_at.0.elapsed() > Duration::from_secs(3) {
         spawn_eth(&mut commands, Vec3::new(-300., -222., 10.), &eth_handle);
-        picked_eth_at.0 = Instant::now();
     }
 }
 

@@ -63,6 +63,7 @@ fn main() {
         )
         // Player related
         .add_system(move_unit)
+        .add_system(fall_unit)
         .add_system(animate_unit_sprites)
         // Eth related
         .add_system(make_eth)

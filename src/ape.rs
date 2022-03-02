@@ -2,6 +2,11 @@ use crate::prelude::*;
 
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
+pub fn init_ape_icon(commands: &mut Commands, asset_server: &AssetServer) {
+    let ape_icon_h = asset_server.load("ape_icon_ok.png");
+    commands.insert_resource(ApeIconHandle(ape_icon_h));
+}
+
 pub fn spawn_ape(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -24,6 +29,7 @@ pub fn spawn_ape(
         })
         .insert(ApeWoundHandle(texture_atlases.add(ape_wound_atlas)))
         .insert(ApeWoundWidth(170. * 0.8))
+        .insert(ApeLife::new(1000.))
         .id();
 
     let attack_range = ApeAttackRange::new(350., 155.)
@@ -37,7 +43,6 @@ pub fn spawn_ape(
     let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
 
     let ape_attack_spec = ApeAttackSpec {
-        ape_entity: ApeEntity(ape),
         attack_range: attack_range,
         init_h: texture_atlases.add(laser_init_atlas),
         init_duration: DurationTimer::from_seconds(0.6),
@@ -50,9 +55,8 @@ pub fn spawn_ape(
     commands.entity(ape).insert(ape_attack_spec);
 }
 
-pub fn spawn_ape_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
+pub fn spawn_ape_attack_init(commands: &mut Commands, ape: Entity, attack_spec: &ApeAttackSpec) {
     let ApeAttackSpec {
-        ape_entity,
         init_duration,
         init_timer,
         ..
@@ -64,19 +68,17 @@ pub fn spawn_ape_attack_init(commands: &mut Commands, attack_spec: &ApeAttackSpe
             transform: Transform::from_xyz(150., 0., 10.),
             ..Default::default()
         })
-        .insert(*ape_entity)
         .insert(StagedAnimation::init(
             init_duration.clone(),
             init_timer.clone(),
         ))
         .id();
 
-    commands.entity(ape_entity.0).push_children(&[animation]);
+    commands.entity(ape).push_children(&[animation]);
 }
 
-pub fn spawn_ape_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
+pub fn spawn_ape_attack_on(commands: &mut Commands, ape: Entity, attack_spec: &ApeAttackSpec) {
     let ApeAttackSpec {
-        ape_entity,
         on_duration,
         on_timer,
         attack_range,
@@ -89,16 +91,20 @@ pub fn spawn_ape_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec)
             transform: Transform::from_xyz(150., 0., 10.),
             ..Default::default()
         })
-        .insert(*ape_entity)
         .insert(StagedAnimation::on(on_duration.clone(), on_timer.clone()))
         .insert(*attack_range)
         .id();
 
-    commands.entity(ape_entity.0).push_children(&[animation]);
+    commands.entity(ape).push_children(&[animation]);
 }
 
-pub fn spawn_ape_damaged_anim(commands: &mut Commands, wound_h: &ApeWoundHandle) -> Entity {
-    commands
+pub fn spawn_ape_damaged_anim(
+    commands: &mut Commands,
+    ape_life: &ApeLife,
+    wound_h: &ApeWoundHandle,
+    ape_icon_h: &ApeIconHandle,
+) -> Entity {
+    let anim = commands
         .spawn_bundle(SpriteSheetBundle {
             texture_atlas: wound_h.0.clone(),
             transform: Transform::from_xyz(0., 0., 9.),
@@ -109,7 +115,38 @@ pub fn spawn_ape_damaged_anim(commands: &mut Commands, wound_h: &ApeWoundHandle)
             count: Some(4),
         })
         .insert(wound_h.clone())
-        .id()
+        .insert(*ape_life)
+        .id();
+
+    if ape_life.current > 0. {
+        let rect_x = ape_life.current * 200. / ape_life.max;
+        let rect = shapes::Rectangle {
+            extents: Vec2::new(rect_x, 10.),
+            origin: shapes::RectangleOrigin::default(),
+        };
+        let builder = GeometryBuilder::new().add(&rect);
+        let healthbar = commands
+            .spawn_bundle(builder.build(
+                DrawMode::Fill(FillMode::color(Color::PINK)),
+                Transform::from_xyz(10., 300., 15.), // TODO: make some ApeDims
+            ))
+            .id();
+        commands.entity(anim).push_children(&[healthbar]);
+
+        let icon = commands
+            .spawn_bundle(SpriteBundle {
+                texture: ape_icon_h.0.clone(),
+                transform: Transform {
+                    scale: Vec3::splat(0.4),
+                    translation: Vec3::new(-rect_x / 2. - 20., 0., 0.),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .id();
+        commands.entity(healthbar).push_children(&[icon]);
+    }
+    anim
 }
 
 ////////////////////////////////////// Components //////////////////////////////////////
@@ -117,8 +154,7 @@ pub fn spawn_ape_damaged_anim(commands: &mut Commands, wound_h: &ApeWoundHandle)
 #[derive(Component)]
 pub struct Ape;
 
-#[derive(Clone, Copy, Component)]
-pub struct ApeEntity(pub Entity);
+pub struct ApeIconHandle(Handle<Image>);
 
 #[derive(Clone, Component)]
 pub struct ApeWoundHandle(pub Handle<TextureAtlas>);
@@ -128,7 +164,6 @@ pub struct ApeWoundWidth(pub f32);
 
 #[derive(Component)]
 pub struct ApeAttackSpec {
-    pub ape_entity: ApeEntity,
     pub attack_range: ApeAttackRange,
     pub init_h: Handle<TextureAtlas>,
     pub init_duration: DurationTimer,
@@ -164,6 +199,25 @@ impl ApeAttackRange {
     }
 }
 
+#[derive(Clone, Copy, Component)]
+pub struct ApeLife {
+    pub current: f32,
+    pub max: f32,
+}
+
+impl ApeLife {
+    pub fn new(amount: f32) -> Self {
+        Self {
+            current: amount,
+            max: amount,
+        }
+    }
+
+    pub fn decrease_by(&mut self, amount: f32) {
+        self.current = (self.current - amount).max(0.);
+    }
+}
+
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub fn move_apes(time: Res<Time>, mut apes_q: Query<&mut Transform, With<Ape>>) {
@@ -179,13 +233,14 @@ pub fn move_apes(time: Res<Time>, mut apes_q: Query<&mut Transform, With<Ape>>) 
 pub fn trigger_ape_attack(
     time: Res<Time>,
     mut commands: Commands,
-    apes_q: Query<&ApeAttackSpec, With<Ape>>,
+    apes_q: Query<(Entity, &ApeAttackSpec), With<Ape>>,
     mut trigger: Local<TriggerTimer>,
 ) {
     trigger.0.tick(time.delta());
     if trigger.0.just_finished() {
-        let attack_spec = apes_q.single();
-        spawn_ape_attack_init(&mut commands, &attack_spec);
+        for (ape, attack_spec) in apes_q.iter() {
+            spawn_ape_attack_init(&mut commands, ape, &attack_spec);
+        }
     }
 }
 
@@ -246,14 +301,17 @@ pub fn animate_apes_attacks(
     apes_q: Query<&ApeAttackSpec, With<Ape>>,
     mut attacks_anim_q: Query<(
         Entity,
-        &ApeEntity,
+        &Parent,
         &mut StagedAnimation,
         &mut TextureAtlasSprite,
         &Handle<TextureAtlas>,
     )>,
 ) {
     for (id, ape, mut anim, mut sprite, texture_atlas_h) in attacks_anim_q.iter_mut() {
-        let attack_spec = apes_q.get(ape.0).unwrap();
+        let attack_spec = match apes_q.get(ape.0) {
+            Ok(attack_spec) => attack_spec,
+            Err(_) => continue,
+        };
 
         match &mut *anim {
             StagedAnimation::Init { duration, timer } => {
@@ -262,7 +320,7 @@ pub fn animate_apes_attacks(
 
                 if duration.finished() {
                     commands.entity(id).despawn();
-                    spawn_ape_attack_on(&mut commands, &attack_spec);
+                    spawn_ape_attack_on(&mut commands, ape.0, &attack_spec);
                 } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
@@ -289,12 +347,14 @@ pub fn animate_apes_wounds(
     mut commands: Commands,
     mut wounds_q: Query<(
         Entity,
+        &Parent,
         &mut Animation,
         &mut TextureAtlasSprite,
+        &ApeLife,
         &ApeWoundHandle,
     )>,
 ) {
-    for (anim_id, mut anim, mut sprite, atlas_h) in wounds_q.iter_mut() {
+    for (anim_id, ape, mut anim, mut sprite, life, atlas_h) in wounds_q.iter_mut() {
         anim.timer.tick(time.delta());
         if !anim.timer.just_finished() {
             continue;
@@ -309,7 +369,10 @@ pub fn animate_apes_wounds(
                 }
                 // Animation is finished
                 else {
-                    commands.entity(anim_id).despawn();
+                    commands.entity(anim_id).despawn_recursive();
+                    if life.current == 0. {
+                        commands.entity(ape.0).despawn_recursive();
+                    }
                 }
             }
             None => unreachable!(),

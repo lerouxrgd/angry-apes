@@ -253,6 +253,15 @@ pub enum UnitCondition {
     Upgraded,
 }
 
+impl UnitCondition {
+    pub fn damages(&self) -> f32 {
+        match self {
+            Self::Normal => 20.,
+            Self::Upgraded => 300.,
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct UnitSprite(pub Entity);
 
@@ -396,25 +405,35 @@ pub fn move_unit(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transform
 pub fn unit_attacks_ape(
     mut commands: Commands,
     mut ev_unit_attack: ResMut<Events<UnitAttack>>,
+    ape_icon: Res<ApeIconHandle>,
     unit_q: Query<(&Transform, &UnitCondition), With<Player>>,
-    apes_q: Query<(Entity, &Transform, &ApeWoundWidth, &ApeWoundHandle), With<Ape>>,
+    mut apes_q: Query<
+        (
+            Entity,
+            &Transform,
+            &mut ApeLife,
+            &ApeWoundWidth,
+            &ApeWoundHandle,
+        ),
+        With<Ape>,
+    >,
 ) {
     for UnitAttack(unit) in ev_unit_attack.drain() {
-        let (unit_transform, _unit_condition) = match unit_q.get(unit) {
+        let (unit_transform, unit_condition) = match unit_q.get(unit) {
             Ok(q_res) => q_res,
             Err(_) => return,
         };
 
         let unit_x = unit_transform.translation.x;
-        for (ape, ape_transform, ape_wound_width, ape_wound_h) in apes_q.iter() {
+        for (ape, ape_transform, mut ape_life, ape_wound_width, ape_wound_h) in apes_q.iter_mut() {
             let ape_x = ape_transform.translation.x;
 
             let close_enough = (unit_x - ape_x).abs() < ape_wound_width.0;
             if close_enough {
-                let wound_anim = spawn_ape_damaged_anim(&mut commands, ape_wound_h);
+                ape_life.decrease_by(unit_condition.damages());
+                let wound_anim =
+                    spawn_ape_damaged_anim(&mut commands, &ape_life, ape_wound_h, &ape_icon);
                 commands.entity(ape).push_children(&[wound_anim]);
-
-                // TODO: also do some damages to the ape, base on unit_condition
             }
         }
     }

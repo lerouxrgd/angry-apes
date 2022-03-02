@@ -30,6 +30,7 @@ mod prelude {
 
     pub const GLOBAL_WIDTH: f32 = 1200.; // matches background.png width
     pub const GLOBAL_HEIGHT: f32 = 600.; // matches background.png height
+    pub const PROJECTION_SCALE: f32 = 300.;
 }
 
 use crate::prelude::*;
@@ -51,9 +52,15 @@ fn main() {
         .add_plugin(ShapePlugin)
         .add_startup_system(setup)
         // Inputs related
-        .add_system(gamepad_connection_events.before("input"))
-        .add_system(gamepad_input.label("input"))
-        .add_system(keyboard_input.label("input"))
+        .add_stage_after(CoreStage::PreUpdate, "inputs", SystemStage::parallel())
+        .add_system_set_to_stage(
+            "inputs",
+            SystemSet::new()
+                .with_system(gamepad_connection_events.before("input"))
+                .with_system(gamepad_input.label("input"))
+                .with_system(keyboard_input.label("input"))
+                .with_system(update_units.after("input")),
+        )
         // Player related
         .add_system(move_unit)
         .add_system(animate_unit_sprites)
@@ -64,10 +71,11 @@ fn main() {
         .add_system(player_eth_gauge)
         .add_system(decay_player_eth)
         // Ape related
-        .add_system(move_ape)
+        .add_system(move_apes)
         .add_system(trigger_ape_attack)
-        .add_system(animate_ape_attack)
-        // Process updates
+        .add_system(ape_attacks_player_collision)
+        .add_system(animate_apes_attacks)
+        // Process unit changes
         .add_stage_before(
             CoreStage::PostUpdate,
             "update_units",

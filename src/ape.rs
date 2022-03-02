@@ -21,14 +21,19 @@ pub fn spawn_ape(
         })
         .id();
 
-    // TODO: add some kind of attack_offset{x} (to be able to locate attack impact pos)
+    let attack_range = ApeAttackRange::new(350., 155.)
+        .scaled_by(0.8)
+        .with_offset(PROJECTION_SCALE / 2.);
 
     let laser_init_image = asset_server.load("ape_king_blinking_eyes.png");
     let laser_init_atlas = TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1);
+
     let laser_on_image = asset_server.load("ape_king_lasers.png");
     let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
+
     let ape_attack_spec = ApeAttackSpec {
         ape_entity: ApeEntity(ape),
+        attack_range: attack_range,
         init_h: texture_atlases.add(laser_init_atlas),
         init_duration: DurationTimer::from_seconds(0.6),
         init_timer: Timer::from_seconds(0.1, true),
@@ -69,6 +74,7 @@ pub fn spawn_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
         ape_entity,
         on_duration,
         on_timer,
+        attack_range,
         ..
     } = attack_spec;
 
@@ -80,6 +86,7 @@ pub fn spawn_attack_on(commands: &mut Commands, attack_spec: &ApeAttackSpec) {
         })
         .insert(*ape_entity)
         .insert(StagedAnimation::on(on_duration.clone(), on_timer.clone()))
+        .insert(*attack_range)
         .id();
 
     commands.entity(ape_entity.0).push_children(&[animation]);
@@ -96,6 +103,7 @@ pub struct ApeEntity(pub Entity);
 #[derive(Component)]
 pub struct ApeAttackSpec {
     pub ape_entity: ApeEntity,
+    pub attack_range: ApeAttackRange,
     pub init_h: Handle<TextureAtlas>,
     pub init_duration: DurationTimer,
     pub init_timer: Timer,
@@ -104,10 +112,36 @@ pub struct ApeAttackSpec {
     pub on_timer: Timer,
 }
 
+#[derive(Clone, Copy, Component)]
+pub struct ApeAttackRange {
+    offset_x: f32,
+    range_x: f32,
+}
+
+impl ApeAttackRange {
+    pub fn new(offset_x: f32, range_x: f32) -> Self {
+        Self { offset_x, range_x }
+    }
+
+    pub fn scaled_by(self, scale: f32) -> Self {
+        Self {
+            offset_x: self.offset_x * scale,
+            range_x: self.range_x * scale,
+        }
+    }
+
+    pub fn with_offset(self, offset: f32) -> Self {
+        Self {
+            offset_x: self.offset_x - offset,
+            range_x: self.range_x,
+        }
+    }
+}
+
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
-pub fn move_ape(time: Res<Time>, mut ape_q: Query<&mut Transform, With<Ape>>) {
-    for mut transform in ape_q.iter_mut() {
+pub fn move_apes(time: Res<Time>, mut apes_q: Query<&mut Transform, With<Ape>>) {
+    for mut transform in apes_q.iter_mut() {
         if (time.time_since_startup().as_secs() / 5) % 2 == 0 {
             transform.translation.x -= 60. * time.delta_seconds();
         } else {
@@ -129,12 +163,62 @@ pub fn trigger_ape_attack(
     }
 }
 
-pub fn animate_ape_attack(
+pub fn ape_attacks_player_collision(
+    mut commands: Commands,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
+    attacks_q: Query<(&GlobalTransform, &ApeAttackRange)>,
+    player_q: Query<
+        (
+            Entity,
+            &Transform,
+            &UnitSprite,
+            &UnitState,
+            &UnitCondition,
+            &UnitAnimations,
+            &Orientation,
+        ),
+        With<Player>,
+    >,
+) {
+    let (
+        player,
+        player_transform,
+        player_sprite,
+        player_state,
+        &player_condition,
+        player_anims,
+        &orientation,
+    ) = player_q.single();
+
+    if matches!(player_condition, UnitCondition::Upgraded) {
+        return;
+    }
+
+    let player_x = player_transform.translation.x;
+    for (attack_transform, &ApeAttackRange { offset_x, range_x }) in attacks_q.iter() {
+        let attack_x = attack_transform.translation.x;
+        if attack_x + offset_x < player_x && player_x < attack_x + offset_x + range_x {
+            commands.entity(player).remove::<Movements>();
+            if !matches!(player_state, UnitState::Wound) {
+                ev_unit_changed.send(UnitChanged {
+                    unit: player,
+                    unit_sprite: player_sprite.0,
+                    unit_anims: player_anims.clone(),
+                    new_state: UnitState::Wound,
+                    new_condition: player_condition,
+                    orientation,
+                });
+            }
+        }
+    }
+}
+
+pub fn animate_apes_attacks(
     time: Res<Time>,
     mut commands: Commands,
     texture_atlases: Res<Assets<TextureAtlas>>,
     apes_q: Query<&ApeAttackSpec, With<Ape>>,
-    mut attack_anim_q: Query<(
+    mut attacks_anim_q: Query<(
         Entity,
         &ApeEntity,
         &mut StagedAnimation,
@@ -142,7 +226,7 @@ pub fn animate_ape_attack(
         &Handle<TextureAtlas>,
     )>,
 ) {
-    for (id, ape, mut anim, mut sprite, texture_atlas_h) in attack_anim_q.iter_mut() {
+    for (id, ape, mut anim, mut sprite, texture_atlas_h) in attacks_anim_q.iter_mut() {
         let attack_spec = apes_q.get(ape.0).unwrap();
 
         match &mut *anim {

@@ -21,7 +21,7 @@ pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
 pub fn spawn_camera(commands: &mut Commands) {
     let projection = OrthographicProjection {
         scaling_mode: ScalingMode::FixedVertical,
-        scale: 300.,
+        scale: PROJECTION_SCALE,
         ..Default::default()
     };
 

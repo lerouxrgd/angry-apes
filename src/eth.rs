@@ -177,7 +177,7 @@ pub fn player_collects_eth(
 
     for (eth_id, eth, eth_transform) in eth_q.iter() {
         let eth_x = eth_transform.translation.x;
-        if (player_x - eth_x).abs() < 10. {
+        if (player_x - eth_x).abs() < 30. {
             player_eth.add(eth);
             commands.entity(eth_id).despawn();
             picked_eth_at.0 = Instant::now();

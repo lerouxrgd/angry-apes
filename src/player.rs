@@ -36,6 +36,11 @@ pub fn spawn_player(
     let jump_h = texture_atlases.add(jump_atlas);
     let jump_timer = Timer::from_seconds(0.1, true);
 
+    let fall_image = asset_server.load("Paladin__FALL.png");
+    let fall_atlas = TextureAtlas::from_grid(fall_image, Vec2::new(65.0, 107.0), 1, 1);
+    let fall_h = texture_atlases.add(fall_atlas);
+    let fall_timer = Timer::from_seconds(0.1, true);
+
     let dash_image = asset_server.load("Paladin__DASH.png");
     let dash_atlas = TextureAtlas::from_grid(dash_image, Vec2::new(65.0, 107.0), 1, 1);
     let dash_h = texture_atlases.add(dash_atlas);
@@ -68,6 +73,10 @@ pub fn spawn_player(
         TextureAtlas::from_grid(jump_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
     let jump_upgraded_h = texture_atlases.add(jump_upgraded_atlas);
 
+    let fall_upgraded_image = asset_server.load("Crusader__FALL.png");
+    let fall_upgraded_atlas = TextureAtlas::from_grid(fall_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
+    let fall_upgraded_h = texture_atlases.add(fall_upgraded_atlas);
+
     let dash_upgraded_image = asset_server.load("Crusader__DASH.png");
     let dash_upgraded_atlas =
         TextureAtlas::from_grid(dash_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
@@ -93,6 +102,9 @@ pub fn spawn_player(
         jump_h,
         jump_upgraded_h,
         jump_timer,
+        fall_h,
+        fall_upgraded_h,
+        fall_timer,
         dash_h,
         dash_upgraded_h,
         dash_timer,
@@ -177,6 +189,9 @@ pub struct UnitAnimations {
     pub jump_h: Handle<TextureAtlas>,
     pub jump_upgraded_h: Handle<TextureAtlas>,
     pub jump_timer: Timer,
+    pub fall_h: Handle<TextureAtlas>,
+    pub fall_upgraded_h: Handle<TextureAtlas>,
+    pub fall_timer: Timer,
     pub dash_h: Handle<TextureAtlas>,
     pub dash_upgraded_h: Handle<TextureAtlas>,
     pub dash_timer: Timer,
@@ -195,6 +210,7 @@ impl UnitAnimations {
             (UnitState::Attack, UnitCondition::Normal) => self.attack_h.clone(),
             (UnitState::Wound, UnitCondition::Normal) => self.wound_h.clone(),
             (UnitState::Jump, UnitCondition::Normal) => self.jump_h.clone(),
+            (UnitState::Fall, UnitCondition::Normal) => self.fall_h.clone(),
             (UnitState::Dash, UnitCondition::Normal) => self.dash_h.clone(),
             // Upgraded
             (UnitState::Stand, UnitCondition::Upgraded) => self.stand_upgraded_h.clone(),
@@ -202,6 +218,7 @@ impl UnitAnimations {
             (UnitState::Attack, UnitCondition::Upgraded) => self.attack_upgraded_h.clone(),
             (UnitState::Wound, UnitCondition::Upgraded) => self.wound_upgraded_h.clone(),
             (UnitState::Jump, UnitCondition::Upgraded) => self.jump_upgraded_h.clone(),
+            (UnitState::Fall, UnitCondition::Upgraded) => self.fall_upgraded_h.clone(),
             (UnitState::Dash, UnitCondition::Upgraded) => self.dash_upgraded_h.clone(),
         }
     }
@@ -213,13 +230,14 @@ impl UnitAnimations {
             UnitState::Attack => self.attack_timer.clone(),
             UnitState::Wound => self.wound_timer.clone(),
             UnitState::Jump => self.jump_timer.clone(),
+            UnitState::Fall => self.fall_timer.clone(),
             UnitState::Dash => self.dash_timer.clone(),
         }
     }
 
     pub fn count_for(&self, u_state: &UnitState) -> Option<usize> {
         match u_state {
-            UnitState::Stand | UnitState::Move | UnitState::Jump => None,
+            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall => None,
             UnitState::Attack => Some(self.attack_count),
             UnitState::Wound => Some(self.wound_count),
             UnitState::Dash => Some(1),
@@ -234,6 +252,7 @@ pub enum UnitState {
     Attack,
     Wound,
     Jump,
+    Fall,
     Dash,
 }
 
@@ -318,12 +337,16 @@ pub fn animate_unit_sprites(
                 }
                 // Animation is finished
                 else {
+                    let new_state = match *unit_state {
+                        UnitState::Dash => UnitState::Fall,
+                        _ => UnitState::Stand,
+                    };
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit,
                         unit_sprite: unit_sprite.0,
                         unit_anims: unit_anims.clone(),
-                        new_state: UnitState::Stand, // TODO: make some state transistion logic
+                        new_state: new_state,
                         new_condition: unit_condition,
                         orientation,
                     });
@@ -474,7 +497,7 @@ pub fn fall_units(
             gravity.vy = 0.;
 
             match *unit_state {
-                UnitState::Jump => {
+                UnitState::Jump | UnitState::Fall => {
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit: unit,

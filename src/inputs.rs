@@ -222,7 +222,7 @@ pub fn keyboard_input(
                 }
                 return;
             }
-            UnitState::Move | UnitState::Jump => {
+            UnitState::Move | UnitState::Jump | UnitState::Fall => {
                 if let Some(orientation) = Orientation::from_keyboard(&keys) {
                     commands.entity(player).insert(orientation);
                 }
@@ -278,7 +278,7 @@ pub fn keyboard_input(
 
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
-            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Dash => (),
+            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall | UnitState::Dash => (),
         }
 
         commands.entity(player).remove::<Movements>();
@@ -294,7 +294,7 @@ pub fn keyboard_input(
 }
 
 pub fn keyboard_jump_detected(keys: &Input<KeyCode>) -> bool {
-    keys.pressed(KeyCode::Space)
+    keys.just_pressed(KeyCode::Space)
 }
 
 pub fn keyboard_dash_detected(keys: &Input<KeyCode>) -> bool {
@@ -393,7 +393,7 @@ pub fn gamepad_input(
                 }
                 return;
             }
-            UnitState::Move | UnitState::Jump => {
+            UnitState::Move | UnitState::Jump | UnitState::Fall => {
                 if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
                     commands.entity(player).insert(orientation);
                 }
@@ -434,7 +434,7 @@ pub fn gamepad_input(
 
         match *unit_state {
             UnitState::Attack | UnitState::Stand | UnitState::Wound => return,
-            UnitState::Move | UnitState::Jump | UnitState::Dash => {
+            UnitState::Move | UnitState::Jump | UnitState::Fall | UnitState::Dash => {
                 commands.entity(player).remove::<Movements>();
                 ev_unit_changed.send(UnitChanged {
                     unit: player,
@@ -452,7 +452,7 @@ pub fn gamepad_input(
 
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
-            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Dash => (),
+            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall | UnitState::Dash => (),
         }
 
         commands.entity(player).remove::<Movements>();

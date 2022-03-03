@@ -294,11 +294,11 @@ pub fn keyboard_input(
 }
 
 pub fn keyboard_jump_detected(keys: &Input<KeyCode>) -> bool {
-    keys.just_pressed(KeyCode::Space)
+    keys.pressed(KeyCode::Space)
 }
 
 pub fn keyboard_dash_detected(keys: &Input<KeyCode>) -> bool {
-    keys.just_pressed(KeyCode::RControl) || keys.just_pressed(KeyCode::Tab)
+    keys.pressed(KeyCode::RControl) || keys.pressed(KeyCode::Tab)
 }
 
 pub fn keyboard_direction_pressed(keys: &Input<KeyCode>) -> bool {

@@ -50,38 +50,48 @@ fn main() {
             group.add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin)
         })
         .add_plugin(ShapePlugin)
+        // Initialize game
         .add_startup_system(setup)
-        // Inputs related
+        .add_state(AppState::InGame)
+        // Process inputs at the very beginning
         .add_stage_after(CoreStage::PreUpdate, "inputs", SystemStage::parallel())
+        .add_system_set_to_stage("inputs", State::<AppState>::get_driver())
         .add_system_set_to_stage(
             "inputs",
-            SystemSet::new()
+            SystemSet::on_update(AppState::InGame)
                 .with_system(gamepad_connection_events.before("input"))
                 .with_system(gamepad_input.label("input"))
                 .with_system(keyboard_input.label("input"))
                 .with_system(update_units.after("input")),
         )
-        // Player related
-        .add_system(move_units)
-        .add_system(fall_units)
-        .add_system(cooldown_units)
-        .add_system(animate_unit_sprites)
-        .add_system(unit_attacks_ape)
-        // Eth related
-        .add_system(make_eth)
-        .add_system(animate_eth)
-        .add_system(player_collects_eth)
-        .add_system(player_eth_gauge)
-        .add_system(decay_player_eth)
-        // Ape related
-        .add_system(make_ape)
-        .add_system(move_apes)
-        .add_system(trigger_ape_attack)
-        .add_system(ape_attacks_player_collision)
-        .add_system(animate_apes_attacks)
-        .add_system(animate_apes_wounds)
-        .add_system(display_dead_apes_counter)
-        // Process unit changes
+        .add_system_set(
+            SystemSet::on_update(AppState::InGame)
+                // Player related systems
+                .with_system(move_units)
+                .with_system(fall_units)
+                .with_system(cooldown_units)
+                .with_system(animate_unit_sprites)
+                .with_system(unit_attacks_ape)
+                // Eth related systems
+                .with_system(make_eth)
+                .with_system(animate_eth)
+                .with_system(player_collects_eth)
+                .with_system(player_eth_gauge)
+                .with_system(decay_player_eth)
+                // Ape related systems
+                .with_system(make_ape)
+                .with_system(move_apes)
+                .with_system(trigger_ape_attack)
+                .with_system(ape_attacks_player_collision)
+                .with_system(animate_apes_attacks)
+                .with_system(animate_apes_wounds)
+                .with_system(display_dead_apes_hud),
+        )
+        // Gameover related systems
+        .add_system_set(SystemSet::on_enter(AppState::GameOver).with_system(despawn_game_state))
+        .add_system_set(SystemSet::on_update(AppState::GameOver).with_system(gameover_screen))
+        .add_system_set(SystemSet::on_exit(AppState::GameOver).with_system(respawn_game_state))
+        // Process unit changes at the end
         .add_stage_before(
             CoreStage::PostUpdate,
             "update_units",
@@ -109,9 +119,9 @@ fn setup(
 
     let font_handle = spawn_font(&asset_server);
     init_ape_icon(&mut commands, &asset_server);
-    spawn_dead_apes_counter(&mut commands, &asset_server, font_handle);
+    spawn_dead_apes_hud(&mut commands, &asset_server, font_handle);
     spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
 
     init_eth(&mut commands, &asset_server, &mut texture_atlases);
-    spawn_ethbar(&mut commands, &asset_server);
+    spawn_eth_hud(&mut commands, &asset_server);
 }

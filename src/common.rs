@@ -3,19 +3,23 @@ use crate::prelude::*;
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
 pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
-    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("background.png"),
-        transform: Transform::from_xyz(0., 0., 0.),
-        ..Default::default()
-    });
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("background.png"),
+            transform: Transform::from_xyz(0., 0., 0.),
+            ..Default::default()
+        })
+        .insert(Scenary);
 }
 
 pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
-    commands.spawn_bundle(SpriteBundle {
-        texture: asset_server.load("platform.png"),
-        transform: Transform::from_xyz(0., -270., 1.),
-        ..Default::default()
-    });
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: asset_server.load("platform.png"),
+            transform: Transform::from_xyz(0., -270., 1.),
+            ..Default::default()
+        })
+        .insert(Scenary);
 }
 
 pub fn spawn_camera(commands: &mut Commands) {
@@ -37,6 +41,15 @@ pub fn spawn_font(asset_server: &AssetServer) -> Handle<Font> {
 }
 
 ////////////////////////////////////// Components //////////////////////////////////////
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum AppState {
+    InGame,
+    GameOver,
+}
+
+#[derive(Component)]
+pub struct Scenary;
 
 #[derive(Component)]
 pub struct Animation {
@@ -91,4 +104,34 @@ impl Default for TriggerTimer {
     fn default() -> Self {
         Self(Timer::from_seconds(3., true))
     }
+}
+
+/////////////////////////////////////// Systems ////////////////////////////////////////
+
+pub fn despawn_game_state(
+    mut commands: Commands,
+    entities_query: Query<
+        Entity,
+        Or<(
+            With<Player>,
+            With<LifeHud>,
+            With<Ape>,
+            With<DeadApesHud>,
+            With<Eth>,
+            With<EthHud>,
+            With<Scenary>,
+        )>,
+    >,
+) {
+    for e in entities_query.iter() {
+        commands.entity(e).despawn_recursive();
+    }
+}
+
+pub fn respawn_game_state() {
+    // TODO: respawn what has been despawned
+}
+
+pub fn gameover_screen() {
+    // TODO: display some text and change AppState to exit gameover screen
 }

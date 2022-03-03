@@ -34,14 +34,17 @@ pub fn spawn_eth(commands: &mut Commands, position: Vec3, eth_handle: &EthHandle
         .insert(Eth::default());
 }
 
-pub fn spawn_ethbar(commands: &mut Commands, asset_server: &AssetServer) {
+pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
+    let eth_hud = commands.spawn().insert(EthHud).id();
+
     let outer_rect = shapes::Rectangle {
         extents: Vec2::new(250., 16.),
         origin: shapes::RectangleOrigin::TopLeft,
     };
     let builder = GeometryBuilder::new().add(&outer_rect);
     let outer = commands
-        .spawn_bundle(builder.build(
+        .entity(eth_hud)
+        .insert_bundle(builder.build(
             DrawMode::Outlined {
                 fill_mode: FillMode::color(Color::NONE),
                 outline_mode: StrokeMode::new(Color::rgb_u8(168, 231, 242), 3.),
@@ -93,9 +96,6 @@ impl Default for Eth {
     }
 }
 
-#[derive(Component)]
-pub struct EthGauge;
-
 #[derive(Debug, Component)]
 pub struct EthOwned {
     pub current: f32,
@@ -128,6 +128,12 @@ impl EthOwned {
         self.current == 0.
     }
 }
+
+#[derive(Component)]
+pub struct EthHud;
+
+#[derive(Component)]
+pub struct EthGauge;
 
 pub struct EthPicked(pub Instant);
 

@@ -149,15 +149,16 @@ pub fn spawn_ape_damaged_anim(
     anim
 }
 
-pub fn spawn_dead_apes_counter(
+pub fn spawn_dead_apes_hud(
     commands: &mut Commands,
     asset_server: &AssetServer,
     font_handle: Handle<Font>,
 ) {
-    commands.insert_resource(DeadApesCounter(0));
-
-    let icon = commands
-        .spawn_bundle(SpriteBundle {
+    let dead_apes_hud = commands
+        .spawn()
+        .insert(DeadApesHud)
+        .insert(DeadApesCounter(0))
+        .insert_bundle(SpriteBundle {
             texture: asset_server.load("ape_icon_dead.png"),
             transform: Transform {
                 scale: Vec3::splat(0.15),
@@ -187,7 +188,7 @@ pub fn spawn_dead_apes_counter(
         })
         .insert(DeadApesText)
         .id();
-    commands.entity(icon).push_children(&[count]);
+    commands.entity(dead_apes_hud).push_children(&[count]);
 }
 
 ////////////////////////////////////// Components //////////////////////////////////////
@@ -260,8 +261,12 @@ impl ApeLife {
 }
 
 #[derive(Component)]
+pub struct DeadApesHud;
+
+#[derive(Component)]
 pub struct DeadApesText;
 
+#[derive(Component)]
 pub struct DeadApesCounter(usize);
 
 pub struct ApeAliveAt(Instant);
@@ -318,6 +323,7 @@ pub fn trigger_ape_attack(
 pub fn ape_attacks_player_collision(
     mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut app_state: ResMut<State<AppState>>,
     attacks_q: Query<(&GlobalTransform, &ApeAttackRange)>,
     player_q: Query<
         (
@@ -358,14 +364,18 @@ pub fn ape_attacks_player_collision(
                     commands.entity(chunk).despawn();
                 }
 
-                ev_unit_changed.send(UnitChanged {
-                    unit: player,
-                    unit_sprite: player_sprite.0,
-                    unit_anims: player_anims.clone(),
-                    new_state: UnitState::Wound,
-                    new_condition: player_condition,
-                    orientation,
-                });
+                if health_chunks.0.is_empty() {
+                    app_state.set(AppState::GameOver).unwrap();
+                } else {
+                    ev_unit_changed.send(UnitChanged {
+                        unit: player,
+                        unit_sprite: player_sprite.0,
+                        unit_anims: player_anims.clone(),
+                        new_state: UnitState::Wound,
+                        new_condition: player_condition,
+                        orientation,
+                    });
+                }
             }
         }
     }
@@ -421,8 +431,8 @@ pub fn animate_apes_attacks(
 pub fn animate_apes_wounds(
     time: Res<Time>,
     texture_atlases: Res<Assets<TextureAtlas>>,
-    mut dead_counter: ResMut<DeadApesCounter>,
     mut commands: Commands,
+    mut dead_counter: Query<&mut DeadApesCounter, With<DeadApesHud>>,
     mut wounds_q: Query<(
         Entity,
         &Parent,
@@ -449,7 +459,7 @@ pub fn animate_apes_wounds(
                 else {
                     commands.entity(anim_id).despawn_recursive();
                     if life.current == 0. {
-                        dead_counter.0 += 1;
+                        dead_counter.single_mut().0 += 1;
                         commands.entity(ape.0).despawn_recursive();
                     }
                 }
@@ -459,10 +469,10 @@ pub fn animate_apes_wounds(
     }
 }
 
-pub fn display_dead_apes_counter(
-    counter: Res<DeadApesCounter>,
+pub fn display_dead_apes_hud(
+    counter: Query<&DeadApesCounter>,
     mut text_q: Query<&mut Text, With<DeadApesText>>,
 ) {
     let mut text = text_q.single_mut();
-    text.sections[0].value = counter.0.to_string();
+    text.sections[0].value = counter.single().0.to_string();
 }

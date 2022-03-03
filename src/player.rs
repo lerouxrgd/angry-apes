@@ -376,7 +376,7 @@ pub fn update_units(mut commands: Commands, mut ev_unit_changed: ResMut<Events<U
     }
 }
 
-pub fn move_unit(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transform, &Movements)>) {
+pub fn move_units(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transform, &Movements)>) {
     for (unit_state, mut transform, movements) in units_q.iter_mut() {
         for moving in movements.0.iter() {
             let velocity = match *unit_state {
@@ -434,6 +434,58 @@ pub fn unit_attacks_ape(
                 let wound_anim =
                     spawn_ape_damaged_anim(&mut commands, &ape_life, ape_wound_h, &ape_icon);
                 commands.entity(ape).push_children(&[wound_anim]);
+            }
+        }
+    }
+}
+
+pub fn fall_units(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut units_q: Query<(
+        Entity,
+        &UnitState,
+        &UnitCondition,
+        &UnitAnimations,
+        &UnitSprite,
+        &mut Transform,
+        &mut Gravity,
+        &Orientation,
+    )>,
+) {
+    for (
+        unit,
+        unit_state,
+        &unit_condition,
+        unit_anims,
+        unit_sprite,
+        mut transform,
+        mut gravity,
+        &orientation,
+    ) in units_q.iter_mut()
+    {
+        gravity.vy -= 1000. * time.delta_seconds();
+        transform.translation.y += gravity.vy * time.delta_seconds();
+
+        let floor = -170.;
+        if transform.translation.y < floor {
+            transform.translation.y = floor;
+            gravity.vy = 0.;
+
+            match *unit_state {
+                UnitState::Jump => {
+                    commands.entity(unit).remove::<Movements>();
+                    ev_unit_changed.send(UnitChanged {
+                        unit: unit,
+                        unit_sprite: unit_sprite.0,
+                        unit_anims: unit_anims.clone(),
+                        new_state: UnitState::Stand,
+                        new_condition: unit_condition,
+                        orientation,
+                    });
+                }
+                _ => (),
             }
         }
     }

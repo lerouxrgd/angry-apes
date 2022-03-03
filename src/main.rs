@@ -64,6 +64,7 @@ fn main() {
         // Player related
         .add_system(move_units)
         .add_system(fall_units)
+        .add_system(cooldown_units)
         .add_system(animate_unit_sprites)
         .add_system(unit_attacks_ape)
         // Eth related

@@ -166,6 +166,7 @@ pub fn keyboard_input(
             &UnitAnimations,
             &UnitSprite,
             &Orientation,
+            &Cooldown,
         ),
         With<Player>,
     >,
@@ -174,8 +175,9 @@ pub fn keyboard_input(
         return;
     }
 
+
     if keyboard_jump_detected(&keys) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
+        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
             player_q.single();
 
         match *unit_state {
@@ -192,12 +194,16 @@ pub fn keyboard_input(
             orientation,
         });
     } else if keyboard_dash_detected(&keys) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
+        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, cooldown) =
             player_q.single();
 
         match *unit_state {
             UnitState::Stand | UnitState::Move | UnitState::Jump => (),
             _ => return,
+        }
+
+        if !cooldown.0.finished() {
+            return;
         }
 
         commands
@@ -211,8 +217,9 @@ pub fn keyboard_input(
             new_condition: unit_condition,
             orientation,
         });
-    } else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
+    }
+    else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
+        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
             player_q.single();
 
         match *unit_state {
@@ -252,7 +259,7 @@ pub fn keyboard_input(
             }
         }
     } else if keyboard_direction_just_released(&keys) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
+        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
             player_q.single();
 
         match *unit_state {
@@ -270,7 +277,7 @@ pub fn keyboard_input(
             orientation,
         });
     } else if keys.just_pressed(KeyCode::Key1) || keys.just_released(KeyCode::Key1) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
+        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
             player_q.single();
 
         match *unit_state {

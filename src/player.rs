@@ -121,6 +121,9 @@ pub fn spawn_player(
         &orientation,
     );
 
+    let gravity = Gravity { vy: 0. };
+    let cooldown = Cooldown(Timer::from_seconds(0.25, false));
+
     // Spawn player unit
 
     commands
@@ -132,7 +135,8 @@ pub fn spawn_player(
             translation: Vec3::new(0., -170., 999.),
             ..Default::default()
         })
-        .insert(Gravity { vy: 0. })
+        .insert(gravity)
+        .insert(cooldown)
         .insert(unit_anims)
         .insert(unit_state)
         .insert(unit_condition)
@@ -327,6 +331,9 @@ pub struct Gravity {
     pub vy: f32,
 }
 
+#[derive(Component)]
+pub struct Cooldown(pub Timer);
+
 pub struct UnitAttack(pub Entity);
 
 #[derive(Component)]
@@ -381,9 +388,13 @@ pub fn animate_unit_sprites(
                 }
                 // Animation is finished
                 else {
-                    let new_state = match *unit_state {
-                        UnitState::Dash => UnitState::Fall,
-                        _ => UnitState::Stand,
+                    let mut new_state = UnitState::Stand;
+                    match *unit_state {
+                        UnitState::Dash => {
+                            commands.entity(unit).insert(Cooldown(Timer::from_seconds(0.25, false)));
+                            new_state = UnitState::Fall;
+                        }
+                        _ => (),
                     };
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
@@ -394,6 +405,7 @@ pub fn animate_unit_sprites(
                         new_condition: unit_condition,
                         orientation,
                     });
+
                     continue;
                 }
             }
@@ -557,3 +569,13 @@ pub fn fall_units(
         }
     }
 }
+
+pub fn cooldown_units(
+    time: Res<Time>,
+    mut units_q: Query<&mut Cooldown>
+) {
+    for mut cooldown in units_q.iter_mut() {
+        cooldown.0.tick(time.delta());
+    }
+}
+

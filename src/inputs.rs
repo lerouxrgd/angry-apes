@@ -191,9 +191,7 @@ pub fn keyboard_input(
             new_condition: unit_condition,
             orientation,
         });
-    }
-
-    if keyboard_dash_detected(&keys) {
+    } else if keyboard_dash_detected(&keys) {
         let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
             player_q.single();
 
@@ -213,9 +211,7 @@ pub fn keyboard_input(
             new_condition: unit_condition,
             orientation,
         });
-    }
-
-    if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
+    } else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
         let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
             player_q.single();
 
@@ -258,7 +254,6 @@ pub fn keyboard_input(
                 });
             }
         }
-
     } else if keyboard_direction_just_released(&keys) {
         let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
             player_q.single();
@@ -277,7 +272,6 @@ pub fn keyboard_input(
             new_condition: unit_condition,
             orientation,
         });
-
     } else if keys.just_pressed(KeyCode::Key1) || keys.just_released(KeyCode::Key1) {
         let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
             player_q.single();
@@ -366,9 +360,7 @@ pub fn gamepad_input(
             new_condition: unit_condition,
             orientation,
         });
-    }
-
-    if gamepad_dash_detected(gamepad, &buttons) {
+    } else if gamepad_dash_detected(gamepad, &buttons) {
         let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =
             player_q.single();
 
@@ -388,9 +380,7 @@ pub fn gamepad_input(
             new_condition: unit_condition,
             orientation,
         });
-    }
-
-    if gamepad_direction_pressed(gamepad, &axes)
+    } else if gamepad_direction_pressed(gamepad, &axes)
         && !buttons.just_pressed(GamepadButton(gamepad, GamepadButtonType::West))
     {
         let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation) =

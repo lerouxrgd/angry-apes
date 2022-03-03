@@ -216,7 +216,7 @@ pub fn keyboard_input(
             player_q.single();
 
         match *unit_state {
-            UnitState::Attack | UnitState::Wound => {
+            UnitState::Attack | UnitState::Wound | UnitState::Dash => {
                 if let Some(orientation) = Orientation::from_keyboard(&keys) {
                     commands.entity(player).insert(orientation);
                 }
@@ -229,9 +229,6 @@ pub fn keyboard_input(
                 commands
                     .entity(player)
                     .insert(Movements::from_keyboard(&keys));
-                return;
-            }
-            UnitState::Dash => {
                 return;
             }
             UnitState::Stand => {
@@ -278,7 +275,11 @@ pub fn keyboard_input(
 
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
-            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall | UnitState::Dash => (),
+            UnitState::Stand
+            | UnitState::Move
+            | UnitState::Jump
+            | UnitState::Fall
+            | UnitState::Dash => (),
         }
 
         commands.entity(player).remove::<Movements>();
@@ -452,7 +453,11 @@ pub fn gamepad_input(
 
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
-            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall | UnitState::Dash => (),
+            UnitState::Stand
+            | UnitState::Move
+            | UnitState::Jump
+            | UnitState::Fall
+            | UnitState::Dash => (),
         }
 
         commands.entity(player).remove::<Movements>();

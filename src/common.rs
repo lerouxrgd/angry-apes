@@ -2,6 +2,24 @@ use crate::prelude::*;
 
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
+pub fn spawn_game_state(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlases: &mut Assets<TextureAtlas>,
+    font_handle: &Handle<Font>,
+) {
+    spawn_background(commands, &asset_server);
+    spawn_platform(commands, &asset_server);
+
+    spawn_player(commands, &asset_server, texture_atlases);
+    spawn_life_hud(commands, &asset_server);
+
+    spawn_eth_hud(commands, &asset_server);
+
+    spawn_ape(commands, &asset_server, texture_atlases);
+    spawn_dead_apes_hud(commands, &asset_server, &font_handle);
+}
+
 pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
     commands
         .spawn_bundle(SpriteBundle {
@@ -35,9 +53,52 @@ pub fn spawn_camera(commands: &mut Commands) {
     commands.spawn_bundle(camera);
 }
 
-pub fn spawn_font(asset_server: &AssetServer) -> Handle<Font> {
+pub fn spawn_font(commands: &mut Commands, asset_server: &AssetServer) -> Handle<Font> {
     let font_handle: Handle<Font> = asset_server.load("FontsFree-Net-Monkey.ttf");
+    commands.insert_resource(font_handle.clone());
     font_handle
+}
+
+pub fn spawn_gameover_screen(commands: &mut Commands, font_handle: &Handle<Font>) {
+    let alignment = TextAlignment {
+        vertical: VerticalAlign::Bottom,
+        horizontal: HorizontalAlign::Center,
+    };
+    let visibility = Visibility { is_visible: false };
+
+    commands
+        .spawn_bundle(Text2dBundle {
+            text: Text::with_section(
+                "You have been funged",
+                TextStyle {
+                    font: font_handle.clone(),
+                    font_size: 60.0,
+                    color: Color::WHITE,
+                },
+                alignment,
+            ),
+            visibility: visibility.clone(),
+            ..Default::default()
+        })
+        .insert(GameoverText)
+        .with_children(|parent| {
+            parent
+                .spawn_bundle(Text2dBundle {
+                    text: Text::with_section(
+                        "Press << attack >> to take your revenge on the Apes",
+                        TextStyle {
+                            font: font_handle.clone(),
+                            font_size: 30.0,
+                            color: Color::WHITE,
+                        },
+                        alignment,
+                    ),
+                    visibility: visibility.clone(),
+                    transform: Transform::from_xyz(0., -40., 0.),
+                    ..Default::default()
+                })
+                .insert(GameoverText);
+        });
 }
 
 ////////////////////////////////////// Components //////////////////////////////////////
@@ -50,6 +111,9 @@ pub enum AppState {
 
 #[derive(Component)]
 pub struct Scenary;
+
+#[derive(Component)]
+pub struct GameoverText;
 
 #[derive(Component)]
 pub struct Animation {
@@ -128,10 +192,51 @@ pub fn despawn_game_state(
     }
 }
 
-pub fn respawn_game_state() {
-    // TODO: respawn what has been despawned
+pub fn respawn_game_state(
+    mut commands: Commands,
+    font_handle: Res<Handle<Font>>,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut text_q: Query<&mut Visibility, With<GameoverText>>,
+) {
+    for mut visibility in text_q.iter_mut() {
+        visibility.is_visible = false;
+    }
+
+    spawn_game_state(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlases,
+        &font_handle,
+    );
 }
 
-pub fn gameover_screen() {
-    // TODO: display some text and change AppState to exit gameover screen
+pub fn gameover_screen(
+    input_kind: Res<InputKind>,
+    keys: Res<Input<KeyCode>>,
+    gamepads: Res<Gamepads>,
+    buttons: Res<Input<GamepadButton>>,
+    mut app_state: ResMut<State<AppState>>,
+    mut text_q: Query<&mut Visibility, With<GameoverText>>,
+) {
+    for mut visibility in text_q.iter_mut() {
+        visibility.is_visible = true;
+    }
+
+    match &*input_kind {
+        InputKind::Keyboard => {
+            if keys.just_released(KeyCode::Key1) {
+                app_state.set(AppState::InGame).unwrap();
+            }
+        }
+        InputKind::Gamepad => {
+            let gamepad = Gamepad(0);
+            if !gamepads.contains(&gamepad) {
+                return;
+            }
+            if buttons.just_released(GamepadButton(gamepad, GamepadButtonType::West)) {
+                app_state.set(AppState::InGame).unwrap();
+            }
+        }
+    }
 }

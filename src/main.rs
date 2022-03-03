@@ -97,7 +97,11 @@ fn main() {
             "update_units",
             SystemStage::parallel(),
         )
-        .add_system_to_stage("update_units", update_units)
+        .add_system_set_to_stage("update_units", State::<AppState>::get_driver())
+        .add_system_set_to_stage(
+            "update_units",
+            SystemSet::on_update(AppState::InGame).with_system(update_units),
+        )
         // Game logic resources
         .init_resource::<Events<UnitChanged>>()
         .init_resource::<Events<UnitAttack>>()
@@ -110,18 +114,16 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
+    let font_handle = spawn_font(&mut commands, &asset_server);
     spawn_camera(&mut commands);
-    spawn_background(&mut commands, &asset_server);
-    spawn_platform(&mut commands, &asset_server);
-
-    spawn_player(&mut commands, &asset_server, &mut texture_atlases);
-    spawn_life_hud(&mut commands, &asset_server);
-
-    let font_handle = spawn_font(&asset_server);
+    spawn_gameover_screen(&mut commands, &font_handle);
     init_ape_icon(&mut commands, &asset_server);
-    spawn_dead_apes_hud(&mut commands, &asset_server, font_handle);
-    spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
-
     init_eth(&mut commands, &asset_server, &mut texture_atlases);
-    spawn_eth_hud(&mut commands, &asset_server);
+
+    spawn_game_state(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlases,
+        &font_handle,
+    );
 }

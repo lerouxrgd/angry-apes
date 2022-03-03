@@ -152,7 +152,7 @@ pub fn spawn_ape_damaged_anim(
 pub fn spawn_dead_apes_hud(
     commands: &mut Commands,
     asset_server: &AssetServer,
-    font_handle: Handle<Font>,
+    font_handle: &Handle<Font>,
 ) {
     let dead_apes_hud = commands
         .spawn()
@@ -365,6 +365,7 @@ pub fn ape_attacks_player_collision(
                 }
 
                 if health_chunks.0.is_empty() {
+                    // TODO: UnitState::Die
                     app_state.set(AppState::GameOver).unwrap();
                 } else {
                     ev_unit_changed.send(UnitChanged {

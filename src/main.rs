@@ -73,6 +73,7 @@ fn main() {
         .add_system(player_eth_gauge)
         .add_system(decay_player_eth)
         // Ape related
+        .add_system(make_ape)
         .add_system(move_apes)
         .add_system(trigger_ape_attack)
         .add_system(ape_attacks_player_collision)
@@ -87,7 +88,6 @@ fn main() {
         )
         .add_system_to_stage("update_units", update_units)
         // Game logic resources
-        .insert_resource(EthPicked(Instant::now()))
         .init_resource::<Events<UnitChanged>>()
         .init_resource::<Events<UnitAttack>>()
         .init_resource::<InputKind>()
@@ -110,6 +110,6 @@ fn setup(
     spawn_dead_apes_counter(&mut commands, &asset_server, font_handle);
     spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
 
-    init_eth_handle(&mut commands, &asset_server, &mut texture_atlases);
+    init_eth(&mut commands, &asset_server, &mut texture_atlases);
     spawn_ethbar(&mut commands, &asset_server);
 }

@@ -256,7 +256,7 @@ pub enum UnitCondition {
 impl UnitCondition {
     pub fn damages(&self) -> f32 {
         match self {
-            Self::Normal => 20.,
+            Self::Normal => 30.,
             Self::Upgraded => 300.,
         }
     }

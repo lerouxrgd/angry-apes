@@ -264,7 +264,32 @@ pub struct DeadApesText;
 
 pub struct DeadApesCounter(usize);
 
+pub struct ApeAliveAt(Instant);
+
+impl Default for ApeAliveAt {
+    fn default() -> Self {
+        Self(Instant::now())
+    }
+}
+
 /////////////////////////////////////// Systems ////////////////////////////////////////
+
+// TODO: A better ape spawning strategy
+pub fn make_ape(
+    mut commands: Commands,
+    apes_q: Query<Entity, With<Ape>>,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut ape_alive_at: Local<ApeAliveAt>,
+) {
+    let apes_count = apes_q.iter().count();
+    if apes_count != 0 {
+        *ape_alive_at = ApeAliveAt::default();
+    }
+    if ape_alive_at.0.elapsed() > Duration::from_secs(3) {
+        spawn_ape(&mut commands, &asset_server, &mut texture_atlases);
+    }
+}
 
 pub fn move_apes(time: Res<Time>, mut apes_q: Query<&mut Transform, With<Ape>>) {
     for mut transform in apes_q.iter_mut() {

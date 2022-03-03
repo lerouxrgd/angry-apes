@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
-pub fn init_eth_handle(
+pub fn init_eth(
     commands: &mut Commands,
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlas>,
@@ -12,6 +12,8 @@ pub fn init_eth_handle(
     let eth_atlas_h = texture_atlases.add(eth_atlas);
 
     commands.insert_resource(EthHandle(eth_atlas_h));
+
+    commands.insert_resource(EthPicked(Instant::now()))
 }
 
 pub fn spawn_eth(commands: &mut Commands, position: Vec3, eth_handle: &EthHandle) {

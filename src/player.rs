@@ -74,7 +74,8 @@ pub fn spawn_player(
     let jump_upgraded_h = texture_atlases.add(jump_upgraded_atlas);
 
     let fall_upgraded_image = asset_server.load("Crusader__FALL.png");
-    let fall_upgraded_atlas = TextureAtlas::from_grid(fall_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
+    let fall_upgraded_atlas =
+        TextureAtlas::from_grid(fall_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
     let fall_upgraded_h = texture_atlases.add(fall_upgraded_atlas);
 
     let dash_upgraded_image = asset_server.load("Crusader__DASH.png");
@@ -163,6 +164,43 @@ pub fn spawn_unit_sprite(
             count: anims.count_for(state),
         })
         .id()
+}
+
+pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
+    let life_hud = commands
+        .spawn()
+        .insert(LifeHud)
+        .insert_bundle(SpriteBundle {
+            texture: asset_server.load("heart_icon.png"),
+            transform: Transform {
+                scale: Vec3::splat(0.13),
+                translation: Vec3::new(-557., 244., 999.),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .id();
+
+    let mut chunks = vec![];
+    let mut offset = 200.;
+    for _ in 0..3 {
+        let chunk = commands
+            .spawn_bundle(SpriteBundle {
+                texture: asset_server.load("life_chunk.png"),
+                transform: Transform {
+                    scale: Vec3::splat(1.2),
+                    translation: Vec3::new(offset, 5., 0.),
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .id();
+        commands.entity(life_hud).push_children(&[chunk]);
+        offset += 120.;
+        chunks.push(chunk);
+    }
+
+    commands.entity(life_hud).insert(LifeChunks(chunks));
 }
 
 ////////////////////////////////////// Components //////////////////////////////////////
@@ -290,6 +328,12 @@ pub struct Gravity {
 }
 
 pub struct UnitAttack(pub Entity);
+
+#[derive(Component)]
+pub struct LifeHud;
+
+#[derive(Component)]
+pub struct LifeChunks(pub Vec<Entity>);
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
 

@@ -331,6 +331,7 @@ pub fn ape_attacks_player_collision(
         ),
         With<Player>,
     >,
+    mut health_q: Query<&mut LifeChunks, With<LifeHud>>,
 ) {
     let (
         player,
@@ -352,6 +353,11 @@ pub fn ape_attacks_player_collision(
         if attack_x + offset_x < player_x && player_x < attack_x + offset_x + range_x {
             commands.entity(player).remove::<Movements>();
             if !matches!(player_state, UnitState::Wound) {
+                let mut health_chunks = health_q.single_mut();
+                if let Some(chunk) = health_chunks.0.pop() {
+                    commands.entity(chunk).despawn();
+                }
+
                 ev_unit_changed.send(UnitChanged {
                     unit: player,
                     unit_sprite: player_sprite.0,

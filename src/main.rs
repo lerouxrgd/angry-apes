@@ -104,6 +104,7 @@ fn setup(
     spawn_platform(&mut commands, &asset_server);
 
     spawn_player(&mut commands, &asset_server, &mut texture_atlases);
+    spawn_life_hud(&mut commands, &asset_server);
 
     let font_handle = spawn_font(&asset_server);
     init_ape_icon(&mut commands, &asset_server);

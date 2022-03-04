@@ -9,6 +9,8 @@ bevy_embedded_assets = "0.2"
 bevy_prototype_lyon = "0.4"
 instant = { version = "0.1", optional = true }
 lyon_tessellation = "0.17"
+rand = "0.8"
+rand_distr = "0.4"
 
 [features]
 default = ["bevy/dynamic"]

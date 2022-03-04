@@ -25,6 +25,7 @@ mod prelude {
     };
     pub use bevy_prototype_lyon::shapes;
     pub use lyon_tessellation as tess;
+    pub use rand_distr::{Beta, Distribution};
 
     pub use crate::ape::*;
     pub use crate::common::*;

@@ -143,12 +143,27 @@ pub fn make_eth(
     eth_handle: Res<EthHandle>,
     picked_eth_at: Res<EthPicked>,
     mut commands: Commands,
+    player_q: Query<&Transform, With<Player>>,
     eth_q: Query<Entity, With<Eth>>,
 ) {
     let eth_count = eth_q.iter().count();
 
     if eth_count == 0 && picked_eth_at.0.elapsed() > Duration::from_secs(3) {
-        spawn_eth(&mut commands, Vec3::new(-300., -222., 20.), &eth_handle);
+        let player_x = player_q.single().translation.x;
+
+        let (a, b) = if player_x < -0.3 * (GLOBAL_WIDTH / 2.) {
+            (5.0, 1.0)
+        } else if player_x > 0.4 * (GLOBAL_WIDTH / 2.) {
+            (1.0, 3.0)
+        } else {
+            (0.5, 0.5)
+        };
+
+        let beta = Beta::new(a, b).unwrap();
+        let v = beta.sample(&mut rand::thread_rng());
+        let x = v * (GLOBAL_WIDTH - 100.) - (GLOBAL_WIDTH - 100.) / 2.;
+
+        spawn_eth(&mut commands, Vec3::new(x, -222., 20.), &eth_handle);
     }
 }
 

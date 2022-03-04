@@ -340,15 +340,15 @@ impl Flank {
 
     pub fn min(&self) -> f32 {
         match self {
-            Self::Left => -(GLOBAL_WIDTH / 2. - 200. * 0.8),
-            Self::Right => 100. * 0.8,
+            Self::Left => -(GLOBAL_WIDTH / 2. - 210. * 0.8),
+            Self::Right => 145. * 0.8,
         }
     }
 
     pub fn max(&self) -> f32 {
         match self {
-            Self::Left => -100. * 0.8,
-            Self::Right => (GLOBAL_WIDTH / 2. - 200. * 0.8),
+            Self::Left => -145. * 0.8,
+            Self::Right => (GLOBAL_WIDTH / 2. - 210. * 0.8),
         }
     }
 

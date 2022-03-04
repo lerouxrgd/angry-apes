@@ -463,7 +463,7 @@ pub fn ape_attacks_player_collision(
         if player_in_range {
             commands.entity(player).remove::<Movements>();
 
-            if !matches!(player_state, UnitState::Wound) {
+            if !matches!(player_state, UnitState::Wound | UnitState::Die) {
                 let mut health_chunks = health_q.single_mut();
                 if let Some(chunk) = health_chunks.0.pop() {
                     commands.entity(chunk).despawn();

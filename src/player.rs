@@ -34,7 +34,7 @@ pub fn spawn_player(
     let die_image = asset_server.load("Paladin__DIE.png");
     let die_atlas = TextureAtlas::from_grid(die_image, Vec2::new(110.0, 127.0), 6, 1);
     let die_h = texture_atlases.add(die_atlas);
-    let die_timer = Timer::from_seconds(0.1, true);
+    let die_timer = Timer::from_seconds(0.12, true);
     let die_count = 5;
 
     let jump_image = asset_server.load("Paladin__JUMP.png");

@@ -161,26 +161,15 @@ pub fn player_collects_eth(
             Entity,
             &Transform,
             &mut EthOwned,
-            &UnitSprite,
             &UnitState,
             &mut UnitCondition,
-            &UnitAnimations,
-            &Orientation,
         ),
         With<Player>,
     >,
     eth_q: Query<(Entity, &Eth, &Transform)>,
 ) {
-    let (
-        player,
-        player_transform,
-        mut player_eth,
-        player_sprite,
-        &player_state,
-        mut player_condition,
-        player_anims,
-        &orientation,
-    ) = player_q.single_mut();
+    let (player, player_transform, mut player_eth, &player_state, mut player_condition) =
+        player_q.single_mut();
     let player_x = player_transform.translation.x;
 
     for (eth_id, eth, eth_transform) in eth_q.iter() {
@@ -195,11 +184,8 @@ pub fn player_collects_eth(
                 *player_condition = new_condition;
                 ev_unit_changed.send(UnitChanged {
                     unit: player,
-                    unit_sprite: player_sprite.0,
-                    unit_anims: player_anims.clone(),
                     new_state: player_state,
                     new_condition,
-                    orientation,
                 });
             }
         }
@@ -209,28 +195,9 @@ pub fn player_collects_eth(
 pub fn decay_player_eth(
     time: Res<Time>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut player_q: Query<
-        (
-            Entity,
-            &mut EthOwned,
-            &UnitSprite,
-            &UnitState,
-            &mut UnitCondition,
-            &UnitAnimations,
-            &Orientation,
-        ),
-        With<Player>,
-    >,
+    mut player_q: Query<(Entity, &mut EthOwned, &UnitState, &mut UnitCondition), With<Player>>,
 ) {
-    let (
-        player,
-        mut player_eth,
-        player_sprite,
-        &player_state,
-        mut player_condition,
-        player_anims,
-        &orientation,
-    ) = player_q.single_mut();
+    let (player, mut player_eth, &player_state, mut player_condition) = player_q.single_mut();
 
     if let UnitCondition::Upgraded = &*player_condition {
         player_eth.remove(2. * time.delta_seconds());
@@ -239,11 +206,8 @@ pub fn decay_player_eth(
             *player_condition = new_condition;
             ev_unit_changed.send(UnitChanged {
                 unit: player,
-                unit_sprite: player_sprite.0,
-                unit_anims: player_anims.clone(),
                 new_state: player_state,
                 new_condition,
-                orientation,
             });
         }
     }

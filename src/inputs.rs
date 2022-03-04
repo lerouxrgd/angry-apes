@@ -158,27 +158,19 @@ pub fn keyboard_input(
     keys: Res<Input<KeyCode>>,
     mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    player_q: Query<
-        (
-            Entity,
-            &UnitState,
-            &UnitCondition,
-            &UnitAnimations,
-            &UnitSprite,
-            &Orientation,
-            &Cooldown,
-        ),
-        With<Player>,
-    >,
+    player_q: Query<(Entity, &UnitState, &UnitCondition, &Orientation, &Cooldown), With<Player>>,
 ) {
     if !matches!(&*input_kind, InputKind::Keyboard) {
         return;
     }
 
-    if keyboard_jump_detected(&keys) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
+    let (player, unit_state, &unit_condition, orientation, cooldown) = player_q.single();
 
+    if let Some(orientation) = Orientation::from_keyboard(&keys) {
+        commands.entity(player).insert(orientation);
+    }
+
+    if keyboard_jump_detected(&keys) {
         match *unit_state {
             UnitState::Stand | UnitState::Move => (),
             _ => return,
@@ -186,46 +178,27 @@ pub fn keyboard_input(
 
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Jump,
             new_condition: unit_condition,
-            orientation,
         });
     } else if keyboard_dash_detected(&keys) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, cooldown) =
-            player_q.single();
-
         match *unit_state {
-            UnitState::Stand | UnitState::Move | UnitState::Jump => (),
+            UnitState::Stand | UnitState::Move | UnitState::Jump if cooldown.0.finished() => (),
             _ => return,
-        }
-
-        if !cooldown.0.finished() {
-            return;
         }
 
         commands
             .entity(player)
             .insert(Movements::from_orientation(&orientation));
+
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Dash,
             new_condition: unit_condition,
-            orientation,
         });
-    }
-    else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
-
+    } else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
         match *unit_state {
-            UnitState::Attack | UnitState::Wound => {
-                if let Some(orientation) = Orientation::from_keyboard(&keys) {
-                    commands.entity(player).insert(orientation);
-                }
+            UnitState::Attack | UnitState::Wound | UnitState::Dash => {
                 return;
             }
             UnitState::Move | UnitState::Jump | UnitState::Fall => {
@@ -237,33 +210,19 @@ pub fn keyboard_input(
                     .insert(Movements::from_keyboard(&keys));
                 return;
             }
-            UnitState::Dash => {
-                return;
-            }
             UnitState::Stand => {
                 commands
                     .entity(player)
                     .insert(Movements::from_keyboard(&keys));
-                let orientation = if let Some(orientation) = Orientation::from_keyboard(&keys) {
-                    commands.entity(player).insert(orientation);
-                    orientation
-                } else {
-                    orientation
-                };
+
                 ev_unit_changed.send(UnitChanged {
                     unit: player,
-                    unit_sprite: sprite.0,
-                    unit_anims: unit_anims.clone(),
                     new_state: UnitState::Move,
                     new_condition: unit_condition,
-                    orientation,
                 });
             }
         }
     } else if keyboard_direction_just_released(&keys) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
-
         match *unit_state {
             UnitState::Move => (),
             _ => return,
@@ -272,16 +231,10 @@ pub fn keyboard_input(
         commands.entity(player).remove::<Movements>();
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Stand,
             new_condition: unit_condition,
-            orientation,
         });
     } else if keys.just_pressed(KeyCode::Key1) || keys.just_released(KeyCode::Key1) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
-
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
             _ => (),
@@ -290,11 +243,8 @@ pub fn keyboard_input(
         commands.entity(player).remove::<Movements>();
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Attack,
             new_condition: unit_condition,
-            orientation,
         });
     }
 }
@@ -328,18 +278,7 @@ pub fn gamepad_input(
     axes: Res<Axis<GamepadAxis>>,
     mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    player_q: Query<
-        (
-            Entity,
-            &UnitState,
-            &UnitCondition,
-            &UnitAnimations,
-            &UnitSprite,
-            &Orientation,
-            &Cooldown,
-        ),
-        With<Player>,
-    >,
+    player_q: Query<(Entity, &UnitState, &UnitCondition, &Orientation, &Cooldown), With<Player>>,
 ) {
     if !matches!(&*input_kind, InputKind::Gamepad) {
         return;
@@ -350,10 +289,13 @@ pub fn gamepad_input(
         return;
     }
 
-    if gamepad_jump_detected(gamepad, &buttons) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
+    let (player, unit_state, &unit_condition, orientation, cooldown) = player_q.single();
 
+    if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
+        commands.entity(player).insert(orientation);
+    }
+
+    if gamepad_jump_detected(gamepad, &buttons) {
         match *unit_state {
             UnitState::Stand | UnitState::Move => (),
             _ => return,
@@ -361,88 +303,51 @@ pub fn gamepad_input(
 
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Jump,
             new_condition: unit_condition,
-            orientation,
         });
     } else if gamepad_dash_detected(gamepad, &buttons) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, cooldown) =
-            player_q.single();
-
         match *unit_state {
-            UnitState::Stand | UnitState::Move | UnitState::Jump => (),
+            UnitState::Stand | UnitState::Move | UnitState::Jump if cooldown.0.finished() => (),
             _ => return,
-        }
-
-        if !cooldown.0.finished() {
-            return;
         }
 
         commands
             .entity(player)
             .insert(Movements::from_orientation(&orientation));
+
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Dash,
             new_condition: unit_condition,
-            orientation,
         });
     } else if gamepad_direction_pressed(gamepad, &axes)
         && !buttons.just_pressed(GamepadButton(gamepad, GamepadButtonType::West))
     {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
-
         match *unit_state {
-            UnitState::Attack | UnitState::Wound => {
-                if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
-                    commands.entity(player).insert(orientation);
-                }
+            UnitState::Attack | UnitState::Wound | UnitState::Dash => {
                 return;
             }
             UnitState::Move | UnitState::Jump | UnitState::Fall => {
-                if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
-                    commands.entity(player).insert(orientation);
-                }
                 commands
                     .entity(player)
                     .insert(Movements::from_gamepad(gamepad, &axes));
-                return;
-            }
-            UnitState::Dash => {
                 return;
             }
             UnitState::Stand => {
                 commands
                     .entity(player)
                     .insert(Movements::from_gamepad(gamepad, &axes));
-                let orientation =
-                    if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
-                        commands.entity(player).insert(orientation);
-                        orientation
-                    } else {
-                        orientation
-                    };
                 ev_unit_changed.send(UnitChanged {
                     unit: player,
-                    unit_sprite: sprite.0,
-                    unit_anims: unit_anims.clone(),
                     new_state: UnitState::Move,
                     new_condition: unit_condition,
-                    orientation,
                 });
             }
         }
     } else if gamepad_direction_just_released(gamepad, &axes)
         && !gamepad_attack_detected(gamepad, &buttons)
     {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
-
         match *unit_state {
             UnitState::Move => (),
             _ => return,
@@ -451,16 +356,10 @@ pub fn gamepad_input(
         commands.entity(player).remove::<Movements>();
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Stand,
             new_condition: unit_condition,
-            orientation,
         });
     } else if gamepad_attack_detected(gamepad, &buttons) {
-        let (player, unit_state, &unit_condition, unit_anims, sprite, &orientation, _cooldown) =
-            player_q.single();
-
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
             _ => (),
@@ -469,11 +368,8 @@ pub fn gamepad_input(
         commands.entity(player).remove::<Movements>();
         ev_unit_changed.send(UnitChanged {
             unit: player,
-            unit_sprite: sprite.0,
-            unit_anims: unit_anims.clone(),
             new_state: UnitState::Attack,
             new_condition: unit_condition,
-            orientation,
         });
     }
 }

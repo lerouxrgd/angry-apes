@@ -325,29 +325,10 @@ pub fn ape_attacks_player_collision(
     mut ev_unit_changed: EventWriter<UnitChanged>,
     mut app_state: ResMut<State<AppState>>,
     attacks_q: Query<(&GlobalTransform, &ApeAttackRange)>,
-    player_q: Query<
-        (
-            Entity,
-            &Transform,
-            &UnitSprite,
-            &UnitState,
-            &UnitCondition,
-            &UnitAnimations,
-            &Orientation,
-        ),
-        With<Player>,
-    >,
+    player_q: Query<(Entity, &Transform, &UnitState, &UnitCondition), With<Player>>,
     mut health_q: Query<&mut LifeChunks, With<LifeHud>>,
 ) {
-    let (
-        player,
-        player_transform,
-        player_sprite,
-        player_state,
-        &player_condition,
-        player_anims,
-        &orientation,
-    ) = player_q.single();
+    let (player, player_transform, player_state, &player_condition) = player_q.single();
 
     if matches!(player_condition, UnitCondition::Upgraded) {
         return;
@@ -370,11 +351,8 @@ pub fn ape_attacks_player_collision(
                 } else {
                     ev_unit_changed.send(UnitChanged {
                         unit: player,
-                        unit_sprite: player_sprite.0,
-                        unit_anims: player_anims.clone(),
                         new_state: UnitState::Wound,
                         new_condition: player_condition,
-                        orientation,
                     });
                 }
             }

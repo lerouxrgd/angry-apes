@@ -123,7 +123,7 @@ pub fn spawn_player(
 
     // Spawn player unit
 
-    commands
+    let player = commands
         .spawn()
         .insert(Player)
         .insert(GlobalTransform::default())
@@ -137,11 +137,13 @@ pub fn spawn_player(
         .insert(unit_anims)
         .insert(unit_state)
         .insert(unit_condition)
-        .insert(UnitSprite(unit_sprite))
         .push_children(&[unit_sprite])
         .insert(orientation)
         .insert(unit_condition)
-        .insert(EthOwned::default());
+        .insert(EthOwned::default())
+        .id();
+
+    commands.entity(player).push_children(&[unit_sprite]);
 }
 
 pub fn spawn_unit_sprite(
@@ -152,7 +154,9 @@ pub fn spawn_unit_sprite(
     orientation: &Orientation,
 ) -> Entity {
     commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn()
+        .insert(UnitSprite)
+        .insert_bundle(SpriteSheetBundle {
             texture_atlas: anims.atlas_for(state, condition),
             sprite: TextureAtlasSprite {
                 flip_x: orientation.flip_x(),
@@ -298,11 +302,8 @@ pub enum UnitState {
 #[derive(Component)]
 pub struct UnitChanged {
     pub unit: Entity,
-    pub unit_sprite: Entity,
-    pub unit_anims: UnitAnimations,
     pub new_state: UnitState,
     pub new_condition: UnitCondition,
-    pub orientation: Orientation,
 }
 
 #[derive(Clone, Copy, Component)]
@@ -321,7 +322,7 @@ impl UnitCondition {
 }
 
 #[derive(Component)]
-pub struct UnitSprite(pub Entity);
+pub struct UnitSprite;
 
 #[derive(Component)]
 pub struct Gravity {
@@ -349,19 +350,24 @@ pub fn animate_unit_sprites(
     mut ev_unit_attack: EventWriter<UnitAttack>,
     units_q: Query<(
         Entity,
-        &UnitSprite,
         &UnitState,
         &UnitCondition,
         &UnitAnimations,
         &Orientation,
+        &Children,
         Option<&Player>,
     )>,
-    mut sprites_q: Query<(&mut Animation, &mut TextureAtlasSprite)>,
+    mut sprites_q: Query<(&mut Animation, &mut TextureAtlasSprite), With<UnitSprite>>,
 ) {
-    for (unit, unit_sprite, unit_state, &unit_condition, unit_anims, &orientation, is_player) in
+    for (unit, unit_state, &unit_condition, unit_anims, &orientation, children, is_player) in
         units_q.iter()
     {
-        let (mut anim, mut sprite) = sprites_q.get_mut(unit_sprite.0).unwrap();
+        let &unit_sprite = children
+            .iter()
+            .find(|&&c| sprites_q.get_mut(c).is_ok())
+            .unwrap();
+
+        let (mut anim, mut sprite) = sprites_q.get_mut(unit_sprite).unwrap();
 
         anim.timer.tick(time.delta());
         if !anim.timer.just_finished() {
@@ -398,11 +404,8 @@ pub fn animate_unit_sprites(
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit,
-                        unit_sprite: unit_sprite.0,
-                        unit_anims: unit_anims.clone(),
                         new_state: new_state,
                         new_condition: unit_condition,
-                        orientation,
                     });
 
                     continue;
@@ -420,16 +423,32 @@ pub fn animate_unit_sprites(
     }
 }
 
-pub fn update_units(mut commands: Commands, mut ev_unit_changed: ResMut<Events<UnitChanged>>) {
+pub fn update_units(
+    mut commands: Commands,
+    mut ev_unit_changed: ResMut<Events<UnitChanged>>,
+    units_q: Query<(&UnitAnimations, &Orientation, &Children)>,
+    sprites_q: Query<Entity, With<UnitSprite>>,
+) {
+    let changes_by_unit = ev_unit_changed
+        .drain()
+        .map(|change| (change.unit, change))
+        .collect::<HashMap<_, _>>();
+
     for UnitChanged {
         unit,
-        unit_sprite,
-        unit_anims,
         new_state,
         new_condition,
-        orientation,
-    } in ev_unit_changed.drain()
+    } in changes_by_unit.into_values()
     {
+        let (unit_anims, &orientation, children) = match units_q.get(unit) {
+            Ok(q_res) => q_res,
+            Err(_) => continue,
+        };
+
+        let unit_sprite = children
+            .iter()
+            .find_map(|&c| sprites_q.get(c).ok())
+            .unwrap();
         commands.entity(unit_sprite).despawn();
         let unit_sprite = spawn_unit_sprite(
             &mut commands,
@@ -442,7 +461,6 @@ pub fn update_units(mut commands: Commands, mut ev_unit_changed: ResMut<Events<U
         commands
             .entity(unit)
             .push_children(&[unit_sprite])
-            .insert(UnitSprite(unit_sprite))
             .insert(new_state);
 
         match new_state {
@@ -525,24 +543,11 @@ pub fn fall_units(
         Entity,
         &UnitState,
         &UnitCondition,
-        &UnitAnimations,
-        &UnitSprite,
         &mut Transform,
         &mut Gravity,
-        &Orientation,
     )>,
 ) {
-    for (
-        unit,
-        unit_state,
-        &unit_condition,
-        unit_anims,
-        unit_sprite,
-        mut transform,
-        mut gravity,
-        &orientation,
-    ) in units_q.iter_mut()
-    {
+    for (unit, unit_state, &unit_condition, mut transform, mut gravity) in units_q.iter_mut() {
         gravity.vy -= 1000. * time.delta_seconds();
         transform.translation.y += gravity.vy * time.delta_seconds();
 
@@ -556,11 +561,8 @@ pub fn fall_units(
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit: unit,
-                        unit_sprite: unit_sprite.0,
-                        unit_anims: unit_anims.clone(),
                         new_state: UnitState::Stand,
                         new_condition: unit_condition,
-                        orientation,
                     });
                 }
                 _ => (),

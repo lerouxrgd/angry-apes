@@ -5,7 +5,7 @@ mod inputs;
 mod player;
 
 mod prelude {
-    pub use std::collections::HashSet;
+    pub use std::collections::{HashMap, HashSet};
     pub use std::time::{Duration, Instant};
 
     pub use bevy::app::Events;
@@ -54,7 +54,11 @@ fn main() {
         .add_startup_system(setup)
         .add_state(AppState::InGame)
         // Process inputs at the very beginning
-        .add_stage_after(CoreStage::PreUpdate, "inputs", SystemStage::parallel())
+        .add_stage_after(
+            CoreStage::PreUpdate,
+            "inputs",
+            SystemStage::single_threaded(),
+        )
         .add_system_set_to_stage("inputs", State::<AppState>::get_driver())
         .add_system_set_to_stage(
             "inputs",
@@ -95,7 +99,7 @@ fn main() {
         .add_stage_before(
             CoreStage::PostUpdate,
             "update_units",
-            SystemStage::parallel(),
+            SystemStage::single_threaded(),
         )
         .add_system_set_to_stage("update_units", State::<AppState>::get_driver())
         .add_system_set_to_stage(

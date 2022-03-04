@@ -198,7 +198,7 @@ pub fn keyboard_input(
         });
     } else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
         match *unit_state {
-            UnitState::Attack | UnitState::Wound | UnitState::Dash => {
+            UnitState::Attack | UnitState::Wound | UnitState::Die | UnitState::Dash => {
                 return;
             }
             UnitState::Move | UnitState::Jump | UnitState::Fall => {
@@ -325,7 +325,7 @@ pub fn gamepad_input(
         && !buttons.just_pressed(GamepadButton(gamepad, GamepadButtonType::West))
     {
         match *unit_state {
-            UnitState::Attack | UnitState::Wound | UnitState::Dash => {
+            UnitState::Attack | UnitState::Wound | UnitState::Die | UnitState::Dash => {
                 return;
             }
             UnitState::Move | UnitState::Jump | UnitState::Fall => {

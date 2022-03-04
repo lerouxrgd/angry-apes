@@ -60,7 +60,12 @@ pub fn spawn_font(commands: &mut Commands, asset_server: &AssetServer) -> Handle
     font_handle
 }
 
-pub fn spawn_gameover_screen(commands: &mut Commands, font_handle: &Handle<Font>) {
+pub fn spawn_gameover_screen(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    font_handle: &Handle<Font>,
+    ape_icon: &ApeIconHandle,
+) {
     let alignment = TextAlignment {
         vertical: VerticalAlign::Bottom,
         horizontal: HorizontalAlign::Center,
@@ -70,7 +75,7 @@ pub fn spawn_gameover_screen(commands: &mut Commands, font_handle: &Handle<Font>
     commands
         .spawn_bundle(Text2dBundle {
             text: Text::with_section(
-                "You have been funged",
+                "You   have   been   funged",
                 TextStyle {
                     font: font_handle.clone(),
                     font_size: 60.0,
@@ -79,14 +84,60 @@ pub fn spawn_gameover_screen(commands: &mut Commands, font_handle: &Handle<Font>
                 alignment,
             ),
             visibility: visibility.clone(),
+            transform: Transform::from_xyz(0., 180., 10.),
             ..Default::default()
         })
-        .insert(GameoverText)
+        .insert(GameoverElement)
         .with_children(|parent| {
+            parent
+                .spawn_bundle(SpriteBundle {
+                    texture: asset_server.load("toilet.png"),
+                    transform: Transform {
+                        scale: Vec3::splat(0.4),
+                        translation: Vec3::new(0., -130., 0.),
+                        ..Default::default()
+                    },
+                    visibility: visibility.clone(),
+                    ..Default::default()
+                })
+                .insert(GameoverElement);
+
             parent
                 .spawn_bundle(Text2dBundle {
                     text: Text::with_section(
-                        "Press << attack >> to take your revenge on the Apes",
+                        "You   managed   to   kill   [ 0 ]",
+                        TextStyle {
+                            font: font_handle.clone(),
+                            font_size: 30.0,
+                            color: Color::WHITE,
+                        },
+                        alignment.clone(),
+                    ),
+                    visibility: visibility.clone(),
+                    transform: Transform::from_xyz(-80., -300., 0.),
+                    ..Default::default()
+                })
+                .insert(ScoreText)
+                .insert(GameoverElement);
+
+            parent
+                .spawn_bundle(SpriteBundle {
+                    texture: ape_icon.0.clone(),
+                    transform: Transform {
+                        scale: Vec3::splat(0.6),
+                        translation: Vec3::new(0., -283., 0.),
+                        ..Default::default()
+                    },
+                    visibility: visibility.clone(),
+                    ..Default::default()
+                })
+                .insert(ScoreTextIcon)
+                .insert(GameoverElement);
+
+            parent
+                .spawn_bundle(Text2dBundle {
+                    text: Text::with_section(
+                        "Press   << attack >>   to   take  your  revenge   on   the   Apes",
                         TextStyle {
                             font: font_handle.clone(),
                             font_size: 30.0,
@@ -95,10 +146,10 @@ pub fn spawn_gameover_screen(commands: &mut Commands, font_handle: &Handle<Font>
                         alignment,
                     ),
                     visibility: visibility.clone(),
-                    transform: Transform::from_xyz(0., -40., 0.),
+                    transform: Transform::from_xyz(0., -380., 0.),
                     ..Default::default()
                 })
-                .insert(GameoverText);
+                .insert(GameoverElement);
         });
 }
 
@@ -114,7 +165,7 @@ pub enum AppState {
 pub struct Scenary;
 
 #[derive(Component)]
-pub struct GameoverText;
+pub struct GameoverElement;
 
 #[derive(Component)]
 pub struct Animation {
@@ -170,6 +221,15 @@ impl Default for TriggerTimer {
     }
 }
 
+#[derive(Default)]
+pub struct Score(pub usize);
+
+#[derive(Component)]
+pub struct ScoreText;
+
+#[derive(Component)]
+pub struct ScoreTextIcon;
+
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub fn despawn_game_state(
@@ -197,11 +257,14 @@ pub fn respawn_game_state(
     font_handle: Res<Handle<Font>>,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    mut text_q: Query<&mut Visibility, With<GameoverText>>,
+    mut text_q: Query<&mut Visibility, With<GameoverElement>>,
+    mut score: ResMut<Score>,
 ) {
     for mut visibility in text_q.iter_mut() {
         visibility.is_visible = false;
     }
+
+    score.0 = 0;
 
     spawn_game_state(
         &mut commands,
@@ -216,10 +279,18 @@ pub fn gameover_screen(
     keys: Res<Input<KeyCode>>,
     gamepads: Res<Gamepads>,
     buttons: Res<Input<GamepadButton>>,
+    score: Res<Score>,
     mut app_state: ResMut<State<AppState>>,
-    mut text_q: Query<&mut Visibility, With<GameoverText>>,
+    mut elements_q: Query<&mut Visibility, With<GameoverElement>>,
+    mut text_q: Query<(&mut Text, &Text2dSize), With<ScoreText>>,
+    mut icon_q: Query<&mut Transform, With<ScoreTextIcon>>,
 ) {
-    for mut visibility in text_q.iter_mut() {
+    let (mut text, text_size) = text_q.single_mut();
+    text.sections[0].value = format!("You   managed   to   kill   [ {} ]", score.0);
+    let icon_offset = text_size.size.width / 2.;
+    icon_q.single_mut().translation.x = icon_offset - 50.;
+
+    for mut visibility in elements_q.iter_mut() {
         visibility.is_visible = true;
     }
 

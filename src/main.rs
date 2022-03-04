@@ -19,6 +19,7 @@ mod prelude {
     pub use bevy::prelude::*;
     pub use bevy::render::camera::OrthographicProjection;
     pub use bevy::render::camera::ScalingMode;
+    pub use bevy::text::Text2dSize;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
     pub use bevy_prototype_lyon::prelude::{
         DrawMode, FillMode, Geometry, GeometryBuilder, Path as TessPath, ShapePlugin, StrokeMode,
@@ -116,6 +117,7 @@ fn main() {
         .init_resource::<Events<UnitChanged>>()
         .init_resource::<Events<UnitAttack>>()
         .init_resource::<InputKind>()
+        .init_resource::<Score>()
         .run();
 }
 
@@ -125,10 +127,10 @@ fn setup(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
     let font_handle = spawn_font(&mut commands, &asset_server);
-    spawn_camera(&mut commands);
-    spawn_gameover_screen(&mut commands, &font_handle);
-    init_ape_icon(&mut commands, &asset_server);
+    let ape_icon_h = init_ape_icon(&mut commands, &asset_server);
     init_eth(&mut commands, &asset_server, &mut texture_atlases);
+    spawn_camera(&mut commands);
+    spawn_gameover_screen(&mut commands, &asset_server, &font_handle, &ape_icon_h);
 
     spawn_game_state(
         &mut commands,

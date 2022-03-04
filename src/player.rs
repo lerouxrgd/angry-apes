@@ -31,6 +31,12 @@ pub fn spawn_player(
     let wound_timer = Timer::from_seconds(0.13, true);
     let wound_count = 3;
 
+    let die_image = asset_server.load("Paladin__DIE.png");
+    let die_atlas = TextureAtlas::from_grid(die_image, Vec2::new(110.0, 127.0), 6, 1);
+    let die_h = texture_atlases.add(die_atlas);
+    let die_timer = Timer::from_seconds(0.1, true);
+    let die_count = 5;
+
     let jump_image = asset_server.load("Paladin__JUMP.png");
     let jump_atlas = TextureAtlas::from_grid(jump_image, Vec2::new(65.0, 107.0), 1, 1);
     let jump_h = texture_atlases.add(jump_atlas);
@@ -100,6 +106,9 @@ pub fn spawn_player(
         wound_upgraded_h,
         wound_timer,
         wound_count,
+        die_h,
+        die_timer,
+        die_count,
         jump_h,
         jump_upgraded_h,
         jump_timer,
@@ -229,6 +238,9 @@ pub struct UnitAnimations {
     pub wound_upgraded_h: Handle<TextureAtlas>,
     pub wound_timer: Timer,
     pub wound_count: usize,
+    pub die_h: Handle<TextureAtlas>,
+    pub die_timer: Timer,
+    pub die_count: usize,
     pub jump_h: Handle<TextureAtlas>,
     pub jump_upgraded_h: Handle<TextureAtlas>,
     pub jump_timer: Timer,
@@ -255,6 +267,7 @@ impl UnitAnimations {
             (UnitState::Jump, UnitCondition::Normal) => self.jump_h.clone(),
             (UnitState::Fall, UnitCondition::Normal) => self.fall_h.clone(),
             (UnitState::Dash, UnitCondition::Normal) => self.dash_h.clone(),
+            (UnitState::Die, _) => self.die_h.clone(),
             // Upgraded
             (UnitState::Stand, UnitCondition::Upgraded) => self.stand_upgraded_h.clone(),
             (UnitState::Move, UnitCondition::Upgraded) => self.move_upgraded_h.clone(),
@@ -275,6 +288,7 @@ impl UnitAnimations {
             UnitState::Jump => self.jump_timer.clone(),
             UnitState::Fall => self.fall_timer.clone(),
             UnitState::Dash => self.dash_timer.clone(),
+            UnitState::Die => self.die_timer.clone(),
         }
     }
 
@@ -283,6 +297,7 @@ impl UnitAnimations {
             UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall => None,
             UnitState::Attack => Some(self.attack_count),
             UnitState::Wound => Some(self.wound_count),
+            UnitState::Die => Some(self.die_count),
             UnitState::Dash => Some(1),
         }
     }
@@ -294,6 +309,7 @@ pub enum UnitState {
     Move,
     Attack,
     Wound,
+    Die,
     Jump,
     Fall,
     Dash,
@@ -348,6 +364,7 @@ pub fn animate_unit_sprites(
     texture_atlases: Res<Assets<TextureAtlas>>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
     mut ev_unit_attack: EventWriter<UnitAttack>,
+    mut app_state: ResMut<State<AppState>>,
     units_q: Query<(
         Entity,
         &UnitState,
@@ -391,6 +408,11 @@ pub fn animate_unit_sprites(
                 }
                 // Animation is finished
                 else {
+                    if matches!(unit_state, UnitState::Die) && is_player.is_some() {
+                        app_state.set(AppState::GameOver).ok();
+                        return;
+                    }
+
                     let mut new_state = UnitState::Stand;
                     match *unit_state {
                         UnitState::Dash => {
@@ -401,14 +423,13 @@ pub fn animate_unit_sprites(
                         }
                         _ => (),
                     };
+
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit,
                         new_state: new_state,
                         new_condition: unit_condition,
                     });
-
-                    continue;
                 }
             }
             // This is an infinite animation

@@ -2,9 +2,10 @@ use crate::prelude::*;
 
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
-pub fn init_ape_icon(commands: &mut Commands, asset_server: &AssetServer) {
-    let ape_icon_h = asset_server.load("ape_icon_ok.png");
-    commands.insert_resource(ApeIconHandle(ape_icon_h));
+pub fn init_ape_icon(commands: &mut Commands, asset_server: &AssetServer) -> ApeIconHandle {
+    let ape_icon_h = ApeIconHandle(asset_server.load("ape_icon_ok.png"));
+    commands.insert_resource(ape_icon_h.clone());
+    ape_icon_h
 }
 
 pub fn spawn_ape(
@@ -233,7 +234,8 @@ pub fn spawn_dead_apes_hud(
 #[derive(Component)]
 pub struct Ape;
 
-pub struct ApeIconHandle(Handle<Image>);
+#[derive(Clone)]
+pub struct ApeIconHandle(pub Handle<Image>);
 
 #[derive(Clone, Component)]
 pub struct ApeWoundHandle(pub Handle<TextureAtlas>);
@@ -428,7 +430,6 @@ pub fn trigger_ape_attack(
 pub fn ape_attacks_player_collision(
     mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut app_state: ResMut<State<AppState>>,
     attacks_q: Query<(&GlobalTransform, &ApeAttackRange, &Flank)>,
     player_q: Query<(Entity, &Transform, &UnitState, &UnitCondition), With<Player>>,
     mut health_q: Query<&mut LifeChunks, With<LifeHud>>,
@@ -469,8 +470,11 @@ pub fn ape_attacks_player_collision(
                 }
 
                 if health_chunks.0.is_empty() {
-                    // TODO: UnitState::Die
-                    app_state.set(AppState::GameOver).ok();
+                    ev_unit_changed.send(UnitChanged {
+                        unit: player,
+                        new_state: UnitState::Die,
+                        new_condition: player_condition,
+                    });
                 } else {
                     ev_unit_changed.send(UnitChanged {
                         unit: player,
@@ -534,6 +538,7 @@ pub fn animate_apes_wounds(
     time: Res<Time>,
     texture_atlases: Res<Assets<TextureAtlas>>,
     mut commands: Commands,
+    mut score: ResMut<Score>,
     mut dead_counter: Query<&mut DeadApesCounter, With<DeadApesHud>>,
     mut wounds_q: Query<(
         Entity,
@@ -562,6 +567,7 @@ pub fn animate_apes_wounds(
                     commands.entity(anim_id).despawn_recursive();
                     if life.current == 0. {
                         dead_counter.single_mut().0 += 1;
+                        score.0 += 1;
                         commands.entity(ape.0).despawn_recursive();
                     }
                 }

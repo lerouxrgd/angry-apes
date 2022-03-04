@@ -171,10 +171,11 @@ pub fn player_collects_eth(
     let (player, player_transform, mut player_eth, &player_state, mut player_condition) =
         player_q.single_mut();
     let player_x = player_transform.translation.x;
+    let player_y = player_transform.translation.y;
 
     for (eth_id, eth, eth_transform) in eth_q.iter() {
         let eth_x = eth_transform.translation.x;
-        if (player_x - eth_x).abs() < 30. {
+        if (player_x - eth_x).abs() < 30. && player_y < -100. {
             player_eth.add(eth);
             commands.entity(eth_id).despawn();
             picked_eth_at.0 = Instant::now();

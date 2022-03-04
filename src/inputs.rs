@@ -196,7 +196,7 @@ pub fn keyboard_input(
             new_state: UnitState::Dash,
             new_condition: unit_condition,
         });
-    } else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Key1) {
+    } else if keyboard_direction_pressed(&keys) && !keys.just_pressed(KeyCode::Return) && !keys.just_pressed(KeyCode::Key1) {
         match *unit_state {
             UnitState::Attack | UnitState::Wound | UnitState::Die | UnitState::Dash => {
                 return;
@@ -234,7 +234,7 @@ pub fn keyboard_input(
             new_state: UnitState::Stand,
             new_condition: unit_condition,
         });
-    } else if keys.just_pressed(KeyCode::Key1) || keys.just_released(KeyCode::Key1) {
+    } else if keys.just_pressed(KeyCode::Return) || keys.just_released(KeyCode::Return) || keys.just_pressed(KeyCode::Key1) || keys.just_released(KeyCode::Key1)  {
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
             _ => (),

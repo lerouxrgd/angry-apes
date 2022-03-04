@@ -14,7 +14,7 @@ pub fn spawn_ape(
     texture_atlases: &mut Assets<TextureAtlas>,
     flank: Flank,
 ) {
-    let ape_name = ["ape_king", "ape_yacht"]
+    let ape_name = ["ape_king", "ape_yacht", "ape_terminator"]
         .choose(&mut rand::thread_rng())
         .unwrap();
 

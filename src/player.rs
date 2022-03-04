@@ -188,7 +188,7 @@ pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
 
     let mut chunks = vec![];
     let mut offset = 200.;
-    for _ in 0..3 {
+    for _ in 0..5 {
         let chunk = commands
             .spawn_bundle(SpriteBundle {
                 texture: asset_server.load("life_chunk.png"),
@@ -510,6 +510,7 @@ pub fn unit_attacks_ape(
             &mut ApeLife,
             &ApeWoundWidth,
             &ApeWoundHandle,
+            &Flank,
         ),
         With<Ape>,
     >,
@@ -521,14 +522,16 @@ pub fn unit_attacks_ape(
         };
 
         let unit_x = unit_transform.translation.x;
-        for (ape, ape_transform, mut ape_life, ape_wound_width, ape_wound_h) in apes_q.iter_mut() {
+        for (ape, ape_transform, mut ape_life, ape_wound_width, ape_wound_h, flank) in
+            apes_q.iter_mut()
+        {
             let ape_x = ape_transform.translation.x;
 
             let close_enough = (unit_x - ape_x).abs() < ape_wound_width.0;
             if close_enough {
                 ape_life.decrease_by(unit_condition.damages());
                 let wound_anim =
-                    spawn_ape_damaged_anim(&mut commands, &ape_life, ape_wound_h, &ape_icon);
+                    spawn_ape_damaged_anim(&mut commands, &ape_life, ape_wound_h, &ape_icon, flank);
                 commands.entity(ape).push_children(&[wound_anim]);
             }
         }

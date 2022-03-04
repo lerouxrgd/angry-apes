@@ -16,7 +16,8 @@ pub fn spawn_game_state(
 
     spawn_eth_hud(commands, &asset_server);
 
-    spawn_ape(commands, &asset_server, texture_atlases);
+    spawn_ape(commands, &asset_server, texture_atlases, Flank::Left);
+    spawn_ape(commands, &asset_server, texture_atlases, Flank::Right);
     spawn_dead_apes_hud(commands, &asset_server, &font_handle);
 }
 
@@ -160,7 +161,6 @@ impl DurationTimer {
     }
 }
 
-// TODO: make this random somehow
 #[derive(Component)]
 pub struct TriggerTimer(pub Timer);
 

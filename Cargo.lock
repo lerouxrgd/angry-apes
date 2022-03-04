@@ -91,6 +91,7 @@ dependencies = [
  "bevy",
  "bevy_embedded_assets",
  "bevy_prototype_lyon",
+ "instant",
  "lyon_tessellation",
 ]
 

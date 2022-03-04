@@ -6,6 +6,10 @@ mod player;
 
 mod prelude {
     pub use std::collections::{HashMap, HashSet};
+
+    #[cfg(target_arch = "wasm32")]
+    pub use instant::{Duration, Instant};
+    #[cfg(not(target_arch = "wasm32"))]
     pub use std::time::{Duration, Instant};
 
     pub use bevy::app::Events;

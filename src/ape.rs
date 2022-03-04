@@ -55,7 +55,7 @@ pub fn spawn_ape(
     let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
 
     let ape_attack_spec = ApeAttackSpec {
-        attack_range: attack_range,
+        attack_range,
         init_h: texture_atlases.add(laser_init_atlas),
         init_duration: DurationTimer::from_seconds(0.6),
         init_timer: Timer::from_seconds(0.1, true),
@@ -422,7 +422,7 @@ pub fn trigger_ape_attack(
     trigger.0.tick(time.delta());
     if trigger.0.just_finished() {
         for (ape, attack_spec) in apes_q.iter() {
-            spawn_ape_attack_init(&mut commands, ape, &attack_spec);
+            spawn_ape_attack_init(&mut commands, ape, attack_spec);
         }
     }
 }
@@ -513,7 +513,7 @@ pub fn animate_apes_attacks(
 
                 if duration.finished() {
                     commands.entity(id).despawn();
-                    spawn_ape_attack_on(&mut commands, ape.0, &attack_spec);
+                    spawn_ape_attack_on(&mut commands, ape.0, attack_spec);
                 } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();

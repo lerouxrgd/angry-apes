@@ -414,20 +414,17 @@ pub fn animate_unit_sprites(
                     }
 
                     let mut new_state = UnitState::Stand;
-                    match *unit_state {
-                        UnitState::Dash => {
-                            commands
-                                .entity(unit)
-                                .insert(Cooldown(Timer::from_seconds(0.25, false)));
-                            new_state = UnitState::Fall;
-                        }
-                        _ => (),
-                    };
+                    if let UnitState::Dash = *unit_state {
+                        commands
+                            .entity(unit)
+                            .insert(Cooldown(Timer::from_seconds(0.25, false)));
+                        new_state = UnitState::Fall;
+                    }
 
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
                         unit,
-                        new_state: new_state,
+                        new_state,
                         new_condition: unit_condition,
                     });
                 }
@@ -473,7 +470,7 @@ pub fn update_units(
         commands.entity(unit_sprite).despawn();
         let unit_sprite = spawn_unit_sprite(
             &mut commands,
-            &unit_anims,
+            unit_anims,
             &new_state,
             &new_condition,
             &orientation,
@@ -484,11 +481,8 @@ pub fn update_units(
             .push_children(&[unit_sprite])
             .insert(new_state);
 
-        match new_state {
-            UnitState::Jump => {
-                commands.entity(unit).insert(Gravity { vy: 500. });
-            }
-            _ => (),
+        if let UnitState::Jump = new_state {
+            commands.entity(unit).insert(Gravity { vy: 500. });
         }
     }
 }
@@ -584,7 +578,7 @@ pub fn fall_units(
                 UnitState::Jump | UnitState::Fall => {
                     commands.entity(unit).remove::<Movements>();
                     ev_unit_changed.send(UnitChanged {
-                        unit: unit,
+                        unit,
                         new_state: UnitState::Stand,
                         new_condition: unit_condition,
                     });

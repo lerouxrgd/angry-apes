@@ -8,17 +8,17 @@ pub fn spawn_game_state(
     texture_atlases: &mut Assets<TextureAtlas>,
     font_handle: &Handle<Font>,
 ) {
-    spawn_background(commands, &asset_server);
-    spawn_platform(commands, &asset_server);
+    spawn_background(commands, asset_server);
+    spawn_platform(commands, asset_server);
 
-    spawn_player(commands, &asset_server, texture_atlases);
-    spawn_life_hud(commands, &asset_server);
+    spawn_player(commands, asset_server, texture_atlases);
+    spawn_life_hud(commands, asset_server);
 
-    spawn_eth_hud(commands, &asset_server);
+    spawn_eth_hud(commands, asset_server);
 
-    spawn_ape(commands, &asset_server, texture_atlases, Flank::Left);
-    spawn_ape(commands, &asset_server, texture_atlases, Flank::Right);
-    spawn_dead_apes_hud(commands, &asset_server, &font_handle);
+    spawn_ape(commands, asset_server, texture_atlases, Flank::Left);
+    spawn_ape(commands, asset_server, texture_atlases, Flank::Right);
+    spawn_dead_apes_hud(commands, asset_server, font_handle);
 }
 
 pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
@@ -111,7 +111,7 @@ pub fn spawn_gameover_screen(
                             font_size: 30.0,
                             color: Color::WHITE,
                         },
-                        alignment.clone(),
+                        alignment,
                     ),
                     visibility: visibility.clone(),
                     transform: Transform::from_xyz(-80., -300., 0.),

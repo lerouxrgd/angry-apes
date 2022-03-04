@@ -189,7 +189,7 @@ pub fn keyboard_input(
 
         commands
             .entity(player)
-            .insert(Movements::from_orientation(&orientation));
+            .insert(Movements::from_orientation(orientation));
 
         ev_unit_changed.send(UnitChanged {
             unit: player,
@@ -314,7 +314,7 @@ pub fn gamepad_input(
 
         commands
             .entity(player)
-            .insert(Movements::from_orientation(&orientation));
+            .insert(Movements::from_orientation(orientation));
 
         ev_unit_changed.send(UnitChanged {
             unit: player,

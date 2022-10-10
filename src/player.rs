@@ -135,12 +135,12 @@ pub fn spawn_player(
     let player = commands
         .spawn()
         .insert(Player)
-        .insert(GlobalTransform::default())
-        .insert(Transform {
+        .insert_bundle(TransformBundle::from_transform(Transform {
             scale: Vec3::splat(1.5),
             translation: Vec3::new(0., -170., 999.),
             ..Default::default()
-        })
+        }))
+        .insert_bundle(VisibilityBundle::default())
         .insert(Gravity { vy: 0. })
         .insert(Cooldown(Timer::from_seconds(0.25, false)))
         .insert(unit_anims)
@@ -397,7 +397,7 @@ pub fn animate_unit_sprites(
                 if *count != 0 {
                     *count -= 1;
                     let texture_atlas = texture_atlases
-                        .get(unit_anims.atlas_for(unit_state, &unit_condition))
+                        .get(&unit_anims.atlas_for(unit_state, &unit_condition))
                         .unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
 
@@ -432,7 +432,7 @@ pub fn animate_unit_sprites(
             // This is an infinite animation
             None => {
                 let texture_atlas = texture_atlases
-                    .get(unit_anims.atlas_for(unit_state, &unit_condition))
+                    .get(&unit_anims.atlas_for(unit_state, &unit_condition))
                     .unwrap();
                 sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 sprite.flip_x = orientation.flip_x();

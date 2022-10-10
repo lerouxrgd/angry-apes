@@ -5,9 +5,9 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-bevy = "0.6"
-bevy_embedded_assets = "0.2"
-bevy_prototype_lyon = "0.4"
+bevy = "0.8"
+bevy_embedded_assets = "0.4"
+bevy_prototype_lyon = "0.6"
 instant = { version = "0.1", optional = true }
 lyon_tessellation = "0.17"
 rand = "0.8"

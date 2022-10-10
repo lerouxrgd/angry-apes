@@ -12,13 +12,13 @@ mod prelude {
     #[cfg(not(target_arch = "wasm32"))]
     pub use std::time::{Duration, Instant};
 
-    pub use bevy::app::Events;
+    pub use bevy::ecs::event::Events;
     pub use bevy::input::gamepad::{Gamepad, GamepadAxisType, GamepadButton};
     pub use bevy::input::keyboard::KeyboardInput;
-    pub use bevy::input::ElementState;
     pub use bevy::prelude::*;
     pub use bevy::render::camera::OrthographicProjection;
     pub use bevy::render::camera::ScalingMode;
+    pub use bevy::render::texture::ImageSettings;
     pub use bevy::text::Text2dSize;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
     pub use bevy_prototype_lyon::prelude::{
@@ -51,7 +51,7 @@ fn main() {
             height: GLOBAL_HEIGHT,
             ..Default::default()
         })
-        .insert_resource(Msaa { samples: 1 })
+        .insert_resource(ImageSettings::default_nearest())
         // Setup plugins
         .add_plugins_with(DefaultPlugins, |group| {
             group.add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin)

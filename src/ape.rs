@@ -209,18 +209,18 @@ pub fn spawn_dead_apes_hud(
 
     let count = commands
         .spawn_bundle(Text2dBundle {
-            text: Text::with_section(
+            text: Text::from_section(
                 "0",
                 TextStyle {
                     font: font_handle.clone(),
                     font_size: 280.0,
                     color: Color::WHITE,
                 },
-                TextAlignment {
-                    vertical: VerticalAlign::Center,
-                    horizontal: HorizontalAlign::Left,
-                },
-            ),
+            )
+            .with_alignment(TextAlignment {
+                vertical: VerticalAlign::Center,
+                horizontal: HorizontalAlign::Left,
+            }),
             transform: Transform::from_xyz(165., -25., 0.),
             ..Default::default()
         })
@@ -348,7 +348,7 @@ impl Flank {
     pub fn max(&self) -> f32 {
         match self {
             Self::Left => -145. * 0.8,
-            Self::Right => (GLOBAL_WIDTH / 2. - 210. * 0.8),
+            Self::Right => GLOBAL_WIDTH / 2. - 210. * 0.8,
         }
     }
 
@@ -449,7 +449,7 @@ pub fn ape_attacks_player_collision(
 
     let player_x = player_transform.translation.x;
     for (attack_transform, &ApeAttackRange { offset_x, range_x }, flank) in attacks_q.iter() {
-        let attack_x = attack_transform.translation.x;
+        let attack_x = attack_transform.to_scale_rotation_translation().2.x;
 
         let player_in_range = match flank {
             Flank::Left => {
@@ -501,7 +501,7 @@ pub fn animate_apes_attacks(
     )>,
 ) {
     for (id, ape, mut anim, mut sprite, texture_atlas_h) in attacks_anim_q.iter_mut() {
-        let attack_spec = match apes_q.get(ape.0) {
+        let attack_spec = match apes_q.get(ape.get()) {
             Ok(attack_spec) => attack_spec,
             Err(_) => continue,
         };
@@ -513,7 +513,7 @@ pub fn animate_apes_attacks(
 
                 if duration.finished() {
                     commands.entity(id).despawn();
-                    spawn_ape_attack_on(&mut commands, ape.0, attack_spec);
+                    spawn_ape_attack_on(&mut commands, ape.get(), attack_spec);
                 } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
@@ -559,7 +559,7 @@ pub fn animate_apes_wounds(
             Some(count) => {
                 if *count != 0 {
                     *count -= 1;
-                    let texture_atlas = texture_atlases.get(atlas_h.0.clone()).unwrap();
+                    let texture_atlas = texture_atlases.get(&atlas_h.0).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 }
                 // Animation is finished
@@ -568,7 +568,7 @@ pub fn animate_apes_wounds(
                     if life.current == 0. {
                         dead_counter.single_mut().0 += 1;
                         score.0 += 1;
-                        commands.entity(ape.0).despawn_recursive();
+                        commands.entity(ape.get()).despawn_recursive();
                     }
                 }
             }

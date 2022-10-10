@@ -43,13 +43,13 @@ pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
 
 pub fn spawn_camera(commands: &mut Commands) {
     let projection = OrthographicProjection {
-        scaling_mode: ScalingMode::FixedVertical,
+        scaling_mode: ScalingMode::FixedVertical(GLOBAL_WIDTH / GLOBAL_HEIGHT),
         scale: PROJECTION_SCALE,
         ..Default::default()
     };
 
-    let mut camera = OrthographicCameraBundle::new_2d();
-    camera.orthographic_projection = projection;
+    let mut camera = Camera2dBundle::default();
+    camera.projection = projection;
 
     commands.spawn_bundle(camera);
 }
@@ -74,15 +74,15 @@ pub fn spawn_gameover_screen(
 
     commands
         .spawn_bundle(Text2dBundle {
-            text: Text::with_section(
+            text: Text::from_section(
                 "You   have   been   funged",
                 TextStyle {
                     font: font_handle.clone(),
                     font_size: 60.0,
                     color: Color::WHITE,
                 },
-                alignment,
-            ),
+            )
+            .with_alignment(alignment),
             visibility: visibility.clone(),
             transform: Transform::from_xyz(0., 180., 10.),
             ..Default::default()
@@ -104,15 +104,15 @@ pub fn spawn_gameover_screen(
 
             parent
                 .spawn_bundle(Text2dBundle {
-                    text: Text::with_section(
+                    text: Text::from_section(
                         "You   managed   to   kill   [ 0 ]",
                         TextStyle {
                             font: font_handle.clone(),
                             font_size: 30.0,
                             color: Color::WHITE,
                         },
-                        alignment,
-                    ),
+                    )
+                    .with_alignment(alignment),
                     visibility: visibility.clone(),
                     transform: Transform::from_xyz(-80., -300., 0.),
                     ..Default::default()
@@ -136,15 +136,15 @@ pub fn spawn_gameover_screen(
 
             parent
                 .spawn_bundle(Text2dBundle {
-                    text: Text::with_section(
+                    text: Text::from_section(
                         "Press   << attack >>   to   take  your  revenge   on   the   Apes",
                         TextStyle {
                             font: font_handle.clone(),
                             font_size: 30.0,
                             color: Color::WHITE,
                         },
-                        alignment,
-                    ),
+                    )
+                    .with_alignment(alignment),
                     visibility: visibility.clone(),
                     transform: Transform::from_xyz(0., -380., 0.),
                     ..Default::default()
@@ -287,7 +287,7 @@ pub fn gameover_screen(
 ) {
     let (mut text, text_size) = text_q.single_mut();
     text.sections[0].value = format!("You   managed   to   kill   [ {} ]", score.0);
-    let icon_offset = text_size.size.width / 2.;
+    let icon_offset = text_size.size.x / 2.;
     icon_q.single_mut().translation.x = icon_offset - 50.;
 
     for mut visibility in elements_q.iter_mut() {
@@ -301,11 +301,14 @@ pub fn gameover_screen(
             }
         }
         InputKind::Gamepad => {
-            let gamepad = Gamepad(0);
+            let gamepad = Gamepad { id: 0 };
             if !gamepads.contains(&gamepad) {
                 return;
             }
-            if buttons.just_released(GamepadButton(gamepad, GamepadButtonType::West)) {
+            if buttons.just_released(GamepadButton {
+                gamepad,
+                button_type: GamepadButtonType::West,
+            }) {
                 app_state.set(AppState::InGame).unwrap();
             }
         }

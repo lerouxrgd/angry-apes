@@ -30,13 +30,7 @@ Try to survive and kill as many Apes as you can !
 **Native**
 
 ```sh
-cargo run --release --no-default-features
-```
-
-**WASM**
-
-```sh
-cargo run --release --target wasm32-unknown-unknown --no-default-features --features wasm
+cargo run --release
 ```
 
 ## Build
@@ -44,13 +38,17 @@ cargo run --release --target wasm32-unknown-unknown --no-default-features --feat
 **Window**
 
 ```sh
-cargo build --release --target x86_64-pc-windows-gnu --no-default-features
+cargo build --release --target x86_64-pc-windows-gnu
 ```
 
 **Wasm**
 
 ```sh
+cargo build --release --target wasm32-unknown-unknown
+
 wasm-bindgen --no-typescript --out-name angry-apes --out-dir wasm --target web target/wasm32-unknown-unknown/release/angry-apes.wasm
+
+python -m http.server -d wasm
 ```
 
 ## Assets

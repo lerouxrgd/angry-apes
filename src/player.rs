@@ -146,7 +146,6 @@ pub fn spawn_player(
         .insert(unit_anims)
         .insert(unit_state)
         .insert(unit_condition)
-        .push_children(&[unit_sprite])
         .insert(orientation)
         .insert(unit_condition)
         .insert(EthOwned::default())

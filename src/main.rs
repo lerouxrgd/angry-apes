@@ -12,6 +12,11 @@ mod prelude {
     #[cfg(not(target_arch = "wasm32"))]
     pub use std::time::{Duration, Instant};
 
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(debug_assertions)]
+    #[allow(unused_imports)]
+    use bevy_dylib;
+
     pub use bevy::ecs::event::Events;
     pub use bevy::input::gamepad::{Gamepad, GamepadAxisType, GamepadButton};
     pub use bevy::input::keyboard::KeyboardInput;

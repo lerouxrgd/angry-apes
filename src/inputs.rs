@@ -44,22 +44,29 @@ impl Movements {
         Self(movements)
     }
 
-    pub fn from_gamepad(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> Self {
+    pub fn from_gamepad(
+        gamepad: Gamepad,
+        buttons: &Input<GamepadButton>,
+        axes: &Axis<GamepadAxis>,
+    ) -> Self {
         let mut movements = HashSet::with_capacity(4);
 
-        // TODO: investigate DPad
-        // let left_dpad_x = axes
-        //     .get(GamepadAxis {
-        //         gamepad,
-        //         axis_type: GamepadAxisType::DPadX,
-        //     })
-        //     .unwrap();
-        // let left_dpad_y = axes
-        //     .get(GamepadAxis {
-        //         gamepad,
-        //         axis_type: GamepadAxisType::DPadY,
-        //     })
-        //     .unwrap();
+        let dpad_left = buttons.pressed(GamepadButton {
+            gamepad,
+            button_type: GamepadButtonType::DPadLeft,
+        });
+        let dpad_right = buttons.pressed(GamepadButton {
+            gamepad,
+            button_type: GamepadButtonType::DPadRight,
+        });
+        let dpad_up = buttons.pressed(GamepadButton {
+            gamepad,
+            button_type: GamepadButtonType::DPadUp,
+        });
+        let dpad_down = buttons.pressed(GamepadButton {
+            gamepad,
+            button_type: GamepadButtonType::DPadDown,
+        });
 
         let left_stick_x = axes
             .get(GamepadAxis {
@@ -74,18 +81,18 @@ impl Movements {
             })
             .unwrap();
 
-        // if left_dpad_x == 1. {
-        //     movements.insert(Moving::Right);
-        // }
-        // if left_dpad_x == -1. {
-        //     movements.insert(Moving::Left);
-        // }
-        // if left_dpad_y == 1. {
-        //     movements.insert(Moving::Up);
-        // }
-        // if left_dpad_y == -1. {
-        //     movements.insert(Moving::Down);
-        // }
+        if dpad_left {
+            movements.insert(Moving::Left);
+        }
+        if dpad_right {
+            movements.insert(Moving::Right);
+        }
+        if dpad_up {
+            movements.insert(Moving::Up);
+        }
+        if dpad_down {
+            movements.insert(Moving::Down);
+        }
 
         if left_stick_x > 0.01 {
             movements.insert(Moving::Right);
@@ -136,11 +143,19 @@ impl Orientation {
         }
     }
 
-    pub fn from_gamepad(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> Option<Self> {
-        // TODO: investigate DPad
-        // let left_dpad_x = axes
-        //     .get(GamepadAxis{gamepad, axis_type: GamepadAxisType::DPadX})
-        //     .unwrap();
+    pub fn from_gamepad(
+        gamepad: Gamepad,
+        buttons: &Input<GamepadButton>,
+        axes: &Axis<GamepadAxis>,
+    ) -> Option<Self> {
+        let dpad_left = buttons.pressed(GamepadButton {
+            gamepad,
+            button_type: GamepadButtonType::DPadLeft,
+        });
+        let dpad_right = buttons.pressed(GamepadButton {
+            gamepad,
+            button_type: GamepadButtonType::DPadRight,
+        });
 
         let left_stick_x = axes
             .get(GamepadAxis {
@@ -153,21 +168,13 @@ impl Orientation {
             Some(Self::Right)
         } else if left_stick_x < -0.01 {
             Some(Self::Left)
+        } else if dpad_left {
+            Some(Self::Left)
+        } else if dpad_right {
+            Some(Self::Right)
         } else {
             None
         }
-
-        // if left_dpad_x == 1. {
-        //     Some(Self::Right)
-        // } else if left_dpad_x == -1. {
-        //     Some(Self::Left)
-        // } else if left_stick_x > 0.01 {
-        //     Some(Self::Right)
-        // } else if left_stick_x < -0.01 {
-        //     Some(Self::Left)
-        // } else {
-        //     None
-        // }
     }
 
     pub fn flip_x(&self) -> bool {
@@ -325,7 +332,7 @@ pub fn gamepad_input(
 
     let (player, unit_state, &unit_condition, orientation, cooldown) = player_q.single();
 
-    if let Some(orientation) = Orientation::from_gamepad(gamepad, &axes) {
+    if let Some(orientation) = Orientation::from_gamepad(gamepad, &buttons, &axes) {
         commands.entity(player).insert(orientation);
     }
 
@@ -355,7 +362,7 @@ pub fn gamepad_input(
             new_state: UnitState::Dash,
             new_condition: unit_condition,
         });
-    } else if gamepad_direction_pressed(gamepad, &axes)
+    } else if gamepad_direction_pressed(gamepad, &buttons, &axes)
         && !buttons.just_pressed(GamepadButton {
             gamepad,
             button_type: GamepadButtonType::West,
@@ -368,13 +375,13 @@ pub fn gamepad_input(
             UnitState::Move | UnitState::Jump | UnitState::Fall => {
                 commands
                     .entity(player)
-                    .insert(Movements::from_gamepad(gamepad, &axes));
+                    .insert(Movements::from_gamepad(gamepad, &buttons, &axes));
                 return;
             }
             UnitState::Stand => {
                 commands
                     .entity(player)
-                    .insert(Movements::from_gamepad(gamepad, &axes));
+                    .insert(Movements::from_gamepad(gamepad, &buttons, &axes));
                 ev_unit_changed.send(UnitChanged {
                     unit: player,
                     new_state: UnitState::Move,
@@ -382,7 +389,7 @@ pub fn gamepad_input(
                 });
             }
         }
-    } else if gamepad_direction_just_released(gamepad, &axes)
+    } else if gamepad_direction_just_released(gamepad, &buttons, &axes)
         && !gamepad_attack_detected(gamepad, &buttons)
     {
         match *unit_state {
@@ -435,14 +442,19 @@ pub fn gamepad_attack_detected(gamepad: Gamepad, buttons: &Input<GamepadButton>)
     })
 }
 
-pub fn gamepad_direction_pressed(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> bool {
-    // TODO: investigate DPad
-    // let left_dpad_x = axes
-    //     .get(GamepadAxis(gamepad, GamepadAxisType::DPadX))
-    //     .unwrap();
-    // let left_dpad_y = axes
-    //     .get(GamepadAxis(gamepad, GamepadAxisType::DPadY))
-    //     .unwrap();
+pub fn gamepad_direction_pressed(
+    gamepad: Gamepad,
+    buttons: &Input<GamepadButton>,
+    axes: &Axis<GamepadAxis>,
+) -> bool {
+    let dpad_left = buttons.pressed(GamepadButton {
+        gamepad,
+        button_type: GamepadButtonType::DPadLeft,
+    });
+    let dpad_right = buttons.pressed(GamepadButton {
+        gamepad,
+        button_type: GamepadButtonType::DPadRight,
+    });
 
     let left_stick_x = axes
         .get(GamepadAxis {
@@ -457,21 +469,22 @@ pub fn gamepad_direction_pressed(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> 
         })
         .unwrap();
 
-    // left_dpad_x == 1.
-    // || left_dpad_y == 1.
-    // || left_dpad_x == -1.
-    // || left_dpad_y == -1. ||
-    left_stick_x != 0. || left_stick_y != 0.
+    dpad_left || dpad_right || left_stick_x != 0. || left_stick_y != 0.
 }
 
-pub fn gamepad_direction_just_released(gamepad: Gamepad, axes: &Axis<GamepadAxis>) -> bool {
-    // TODO: investigate DPad
-    // let left_dpad_x = axes
-    //     .get(GamepadAxis(gamepad, GamepadAxisType::DPadX))
-    //     .unwrap();
-    // let left_dpad_y = axes
-    //     .get(GamepadAxis(gamepad, GamepadAxisType::DPadY))
-    //     .unwrap();
+pub fn gamepad_direction_just_released(
+    gamepad: Gamepad,
+    buttons: &Input<GamepadButton>,
+    axes: &Axis<GamepadAxis>,
+) -> bool {
+    let dpad_left = buttons.just_released(GamepadButton {
+        gamepad,
+        button_type: GamepadButtonType::DPadLeft,
+    });
+    let dpad_right = buttons.just_released(GamepadButton {
+        gamepad,
+        button_type: GamepadButtonType::DPadRight,
+    });
 
     let left_stick_x = axes
         .get(GamepadAxis {
@@ -486,8 +499,7 @@ pub fn gamepad_direction_just_released(gamepad: Gamepad, axes: &Axis<GamepadAxis
         })
         .unwrap();
 
-    // left_dpad_x == 0. && left_dpad_y == 0. &&
-    left_stick_x == 0. && left_stick_y == 0.
+    dpad_left || dpad_right || left_stick_x == 0. && left_stick_y == 0.
 }
 
 pub fn gamepad_connection_events(

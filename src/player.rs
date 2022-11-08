@@ -2,181 +2,28 @@ use crate::prelude::*;
 
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
-pub fn spawn_player(
-    commands: &mut Commands,
-    asset_server: &AssetServer,
-    texture_atlases: &mut Assets<TextureAtlas>,
-) {
-    // Sprites for UnitCondition::Normal
-
-    let stand_image = asset_server.load("Paladin__STAND.png");
-    let stand_atlas = TextureAtlas::from_grid(stand_image, Vec2::new(57.0, 107.0), 11, 1);
-    let stand_h = texture_atlases.add(stand_atlas);
-    let stand_timer = Timer::from_seconds(0.2, true);
-
-    let move_image = asset_server.load("Paladin__MOVE.png");
-    let move_atlas = TextureAtlas::from_grid(move_image, Vec2::new(65.0, 107.0), 8, 1);
-    let move_h = texture_atlases.add(move_atlas);
-    let move_timer = Timer::from_seconds(0.1, true);
-
-    let attack_image = asset_server.load("Paladin__ATTACK_1.png");
-    let attack_atlas = TextureAtlas::from_grid(attack_image, Vec2::new(105.0, 107.0), 5, 1);
-    let attack_h = texture_atlases.add(attack_atlas);
-    let attack_timer = Timer::from_seconds(0.11, true);
-    let attack_count = 5;
-
-    let wound_image = asset_server.load("Paladin__WOUND.png");
-    let wound_atlas = TextureAtlas::from_grid(wound_image, Vec2::new(110.0, 127.0), 3, 1);
-    let wound_h = texture_atlases.add(wound_atlas);
-    let wound_timer = Timer::from_seconds(0.13, true);
-    let wound_count = 3;
-
-    let die_image = asset_server.load("Paladin__DIE.png");
-    let die_atlas = TextureAtlas::from_grid(die_image, Vec2::new(110.0, 127.0), 6, 1);
-    let die_h = texture_atlases.add(die_atlas);
-    let die_timer = Timer::from_seconds(0.12, true);
-    let die_count = 5;
-
-    let jump_image = asset_server.load("Paladin__JUMP.png");
-    let jump_atlas = TextureAtlas::from_grid(jump_image, Vec2::new(65.0, 107.0), 1, 1);
-    let jump_h = texture_atlases.add(jump_atlas);
-    let jump_timer = Timer::from_seconds(0.1, true);
-
-    let fall_image = asset_server.load("Paladin__FALL.png");
-    let fall_atlas = TextureAtlas::from_grid(fall_image, Vec2::new(65.0, 107.0), 1, 1);
-    let fall_h = texture_atlases.add(fall_atlas);
-    let fall_timer = Timer::from_seconds(0.1, true);
-
-    let dash_image = asset_server.load("Paladin__DASH.png");
-    let dash_atlas = TextureAtlas::from_grid(dash_image, Vec2::new(65.0, 107.0), 1, 1);
-    let dash_h = texture_atlases.add(dash_atlas);
-    let dash_timer = Timer::from_seconds(0.15, true);
-
-    // Sprites for UnitCondition::Upgraded
-
-    let stand_upgraded_image = asset_server.load("Crusader__STAND.png");
-    let stand_upgraded_atlas =
-        TextureAtlas::from_grid(stand_upgraded_image, Vec2::new(57.0, 107.0), 11, 1);
-    let stand_upgraded_h = texture_atlases.add(stand_upgraded_atlas);
-
-    let move_upgraded_image = asset_server.load("Crusader__MOVE.png");
-    let move_upgraded_atlas =
-        TextureAtlas::from_grid(move_upgraded_image, Vec2::new(65.0, 107.0), 8, 1);
-    let move_upgraded_h = texture_atlases.add(move_upgraded_atlas);
-
-    let attack_upgraded_image = asset_server.load("Crusader__ATTACK_1.png");
-    let attack_upgraded_atlas =
-        TextureAtlas::from_grid(attack_upgraded_image, Vec2::new(105.0, 107.0), 5, 1);
-    let attack_upgraded_h = texture_atlases.add(attack_upgraded_atlas);
-
-    let wound_upgraded_image = asset_server.load("Crusader__WOUND.png");
-    let wound_upgraded_atlas =
-        TextureAtlas::from_grid(wound_upgraded_image, Vec2::new(110.0, 127.0), 3, 1);
-    let wound_upgraded_h = texture_atlases.add(wound_upgraded_atlas);
-
-    let jump_upgraded_image = asset_server.load("Crusader__JUMP.png");
-    let jump_upgraded_atlas =
-        TextureAtlas::from_grid(jump_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
-    let jump_upgraded_h = texture_atlases.add(jump_upgraded_atlas);
-
-    let fall_upgraded_image = asset_server.load("Crusader__FALL.png");
-    let fall_upgraded_atlas =
-        TextureAtlas::from_grid(fall_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
-    let fall_upgraded_h = texture_atlases.add(fall_upgraded_atlas);
-
-    let dash_upgraded_image = asset_server.load("Crusader__DASH.png");
-    let dash_upgraded_atlas =
-        TextureAtlas::from_grid(dash_upgraded_image, Vec2::new(65.0, 107.0), 1, 1);
-    let dash_upgraded_h = texture_atlases.add(dash_upgraded_atlas);
-
-    // Spawn player initial sprite
-
-    let unit_anims = UnitAnimations {
-        stand_h,
-        stand_upgraded_h,
-        stand_timer,
-        move_h,
-        move_upgraded_h,
-        move_timer,
-        attack_h,
-        attack_upgraded_h,
-        attack_timer,
-        attack_count,
-        wound_h,
-        wound_upgraded_h,
-        wound_timer,
-        wound_count,
-        die_h,
-        die_timer,
-        die_count,
-        jump_h,
-        jump_upgraded_h,
-        jump_timer,
-        fall_h,
-        fall_upgraded_h,
-        fall_timer,
-        dash_h,
-        dash_upgraded_h,
-        dash_timer,
-    };
-    let unit_state = UnitState::Stand;
-    let unit_condition = UnitCondition::Normal;
-    let orientation = Orientation::Right;
-    let unit_sprite = spawn_unit_sprite(
-        commands,
-        &unit_anims,
-        &unit_state,
-        &unit_condition,
-        &orientation,
-    );
-
-    // Spawn player unit
-
-    let player = commands
+pub fn spawn_player(commands: &mut Commands, asset_server: &AssetServer) {
+    commands
         .spawn()
         .insert(Player)
+        .insert(UnitKind::Player)
+        .insert_bundle(VisibilityBundle::default())
+        .insert(Gravity { vy: 0. })
+        .insert(DashCooldown::default())
+        .insert_bundle(AsepriteBundle {
+            aseprite: asset_server.load(sprites::Paladin::PATH),
+            animation: AsepriteAnimation::from(sprites::Paladin::tags::STAND),
+            ..default()
+        })
         .insert_bundle(TransformBundle::from_transform(Transform {
             scale: Vec3::splat(1.5),
             translation: Vec3::new(0., -170., 999.),
-            ..Default::default()
+            ..default()
         }))
-        .insert_bundle(VisibilityBundle::default())
-        .insert(Gravity { vy: 0. })
-        .insert(Cooldown(Timer::from_seconds(0.25, false)))
-        .insert(unit_anims)
-        .insert(unit_state)
-        .insert(unit_condition)
-        .insert(orientation)
-        .insert(unit_condition)
-        .insert(EthOwned::default())
-        .id();
-
-    commands.entity(player).push_children(&[unit_sprite]);
-}
-
-pub fn spawn_unit_sprite(
-    commands: &mut Commands,
-    anims: &UnitAnimations,
-    state: &UnitState,
-    condition: &UnitCondition,
-    orientation: &Orientation,
-) -> Entity {
-    commands
-        .spawn()
-        .insert(UnitSprite)
-        .insert_bundle(SpriteSheetBundle {
-            texture_atlas: anims.atlas_for(state, condition),
-            sprite: TextureAtlasSprite {
-                flip_x: orientation.flip_x(),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .insert(Animation {
-            timer: anims.timer_for(state),
-            count: anims.count_for(state),
-        })
-        .id()
+        .insert(UnitState::Stand)
+        .insert(UnitCondition::Normal)
+        .insert(Orientation::Right)
+        .insert(EthOwned::default());
 }
 
 pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
@@ -188,9 +35,9 @@ pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
             transform: Transform {
                 scale: Vec3::splat(0.13),
                 translation: Vec3::new(-557., 244., 999.),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .id();
 
@@ -203,9 +50,9 @@ pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
                 transform: Transform {
                     scale: Vec3::splat(1.2),
                     translation: Vec3::new(offset, 5., 0.),
-                    ..Default::default()
+                    ..default()
                 },
-                ..Default::default()
+                ..default()
             })
             .id();
         commands.entity(life_hud).push_children(&[chunk]);
@@ -221,88 +68,50 @@ pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Clone, Component)]
-pub struct UnitAnimations {
-    pub stand_h: Handle<TextureAtlas>,
-    pub stand_upgraded_h: Handle<TextureAtlas>,
-    pub stand_timer: Timer,
-    pub move_h: Handle<TextureAtlas>,
-    pub move_upgraded_h: Handle<TextureAtlas>,
-    pub move_timer: Timer,
-    pub attack_h: Handle<TextureAtlas>,
-    pub attack_upgraded_h: Handle<TextureAtlas>,
-    pub attack_timer: Timer,
-    pub attack_count: usize,
-    pub wound_h: Handle<TextureAtlas>,
-    pub wound_upgraded_h: Handle<TextureAtlas>,
-    pub wound_timer: Timer,
-    pub wound_count: usize,
-    pub die_h: Handle<TextureAtlas>,
-    pub die_timer: Timer,
-    pub die_count: usize,
-    pub jump_h: Handle<TextureAtlas>,
-    pub jump_upgraded_h: Handle<TextureAtlas>,
-    pub jump_timer: Timer,
-    pub fall_h: Handle<TextureAtlas>,
-    pub fall_upgraded_h: Handle<TextureAtlas>,
-    pub fall_timer: Timer,
-    pub dash_h: Handle<TextureAtlas>,
-    pub dash_upgraded_h: Handle<TextureAtlas>,
-    pub dash_timer: Timer,
+#[derive(Component)]
+pub enum UnitKind {
+    Player,
 }
 
-impl UnitAnimations {
-    pub fn atlas_for(
+impl UnitKind {
+    pub fn anim_tag(&self, unit_state: UnitState, unit_condition: UnitCondition) -> AsepriteTag {
+        use UnitCondition as Cond;
+        use UnitState::*;
+        match (self, unit_condition, unit_state) {
+            (Self::Player, Cond::Normal, Stand) => sprites::Paladin::tags::STAND,
+            (Self::Player, Cond::Normal, Move) => sprites::Paladin::tags::MOVE,
+            (Self::Player, Cond::Normal, Attack) => sprites::Paladin::tags::ATTACK,
+            (Self::Player, Cond::Normal, Wound) => sprites::Paladin::tags::WOUND,
+            (Self::Player, Cond::Normal, Die) => sprites::Paladin::tags::DIE,
+            (Self::Player, Cond::Normal, Jump) => sprites::Paladin::tags::JUMP,
+            (Self::Player, Cond::Normal, Fall) => sprites::Paladin::tags::FALL,
+            (Self::Player, Cond::Normal, Dash) => sprites::Paladin::tags::DASH,
+            (Self::Player, Cond::Upgraded, Stand) => sprites::Crusader::tags::STAND,
+            (Self::Player, Cond::Upgraded, Move) => sprites::Crusader::tags::MOVE,
+            (Self::Player, Cond::Upgraded, Attack) => sprites::Crusader::tags::ATTACK,
+            (Self::Player, Cond::Upgraded, Wound) => sprites::Crusader::tags::WOUND,
+            (Self::Player, Cond::Upgraded, Die) => unreachable!(),
+            (Self::Player, Cond::Upgraded, Jump) => sprites::Crusader::tags::JUMP,
+            (Self::Player, Cond::Upgraded, Fall) => sprites::Crusader::tags::FALL,
+            (Self::Player, Cond::Upgraded, Dash) => sprites::Crusader::tags::DASH,
+        }
+        .into()
+    }
+
+    pub fn asperite_handle(
         &self,
-        u_state: &UnitState,
-        u_condition: &UnitCondition,
-    ) -> Handle<TextureAtlas> {
-        match (u_state, u_condition) {
-            // Normal
-            (UnitState::Stand, UnitCondition::Normal) => self.stand_h.clone(),
-            (UnitState::Move, UnitCondition::Normal) => self.move_h.clone(),
-            (UnitState::Attack, UnitCondition::Normal) => self.attack_h.clone(),
-            (UnitState::Wound, UnitCondition::Normal) => self.wound_h.clone(),
-            (UnitState::Jump, UnitCondition::Normal) => self.jump_h.clone(),
-            (UnitState::Fall, UnitCondition::Normal) => self.fall_h.clone(),
-            (UnitState::Dash, UnitCondition::Normal) => self.dash_h.clone(),
-            (UnitState::Die, _) => self.die_h.clone(),
-            // Upgraded
-            (UnitState::Stand, UnitCondition::Upgraded) => self.stand_upgraded_h.clone(),
-            (UnitState::Move, UnitCondition::Upgraded) => self.move_upgraded_h.clone(),
-            (UnitState::Attack, UnitCondition::Upgraded) => self.attack_upgraded_h.clone(),
-            (UnitState::Wound, UnitCondition::Upgraded) => self.wound_upgraded_h.clone(),
-            (UnitState::Jump, UnitCondition::Upgraded) => self.jump_upgraded_h.clone(),
-            (UnitState::Fall, UnitCondition::Upgraded) => self.fall_upgraded_h.clone(),
-            (UnitState::Dash, UnitCondition::Upgraded) => self.dash_upgraded_h.clone(),
-        }
-    }
-
-    pub fn timer_for(&self, u_state: &UnitState) -> Timer {
-        match u_state {
-            UnitState::Stand => self.stand_timer.clone(),
-            UnitState::Move => self.move_timer.clone(),
-            UnitState::Attack => self.attack_timer.clone(),
-            UnitState::Wound => self.wound_timer.clone(),
-            UnitState::Jump => self.jump_timer.clone(),
-            UnitState::Fall => self.fall_timer.clone(),
-            UnitState::Dash => self.dash_timer.clone(),
-            UnitState::Die => self.die_timer.clone(),
-        }
-    }
-
-    pub fn count_for(&self, u_state: &UnitState) -> Option<usize> {
-        match u_state {
-            UnitState::Stand | UnitState::Move | UnitState::Jump | UnitState::Fall => None,
-            UnitState::Attack => Some(self.attack_count),
-            UnitState::Wound => Some(self.wound_count),
-            UnitState::Die => Some(self.die_count),
-            UnitState::Dash => Some(1),
+        aseprite_handles: &AsepriteHandles,
+        unit_condition: UnitCondition,
+    ) -> Handle<Aseprite> {
+        use UnitCondition as Cond;
+        match (self, unit_condition) {
+            (Self::Player, Cond::Normal) => aseprite_handles.get_handle(sprites::Paladin::PATH),
+            (Self::Player, Cond::Upgraded) => aseprite_handles.get_handle(sprites::Crusader::PATH),
         }
     }
 }
 
-#[derive(Clone, Copy, Component)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub enum UnitState {
     Stand,
     Move,
@@ -316,12 +125,39 @@ pub enum UnitState {
 
 #[derive(Component)]
 pub struct UnitChanged {
-    pub unit: Entity,
-    pub new_state: UnitState,
-    pub new_condition: UnitCondition,
+    unit: Entity,
+    new_state: Option<UnitState>,
+    new_condition: Option<UnitCondition>,
+    new_orientation: Option<Orientation>,
 }
 
-#[derive(Clone, Copy, Component)]
+impl UnitChanged {
+    pub fn entity(unit: Entity) -> Self {
+        Self {
+            unit,
+            new_state: None,
+            new_condition: None,
+            new_orientation: None,
+        }
+    }
+
+    pub fn new_state<N: Into<Option<UnitState>>>(mut self, new_state: N) -> Self {
+        self.new_state = new_state.into();
+        self
+    }
+
+    pub fn new_condition<N: Into<Option<UnitCondition>>>(mut self, new_condition: N) -> Self {
+        self.new_condition = new_condition.into();
+        self
+    }
+
+    pub fn new_orientation<N: Into<Option<Orientation>>>(mut self, new_orientation: N) -> Self {
+        self.new_orientation = new_orientation.into();
+        self
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Component)]
 pub enum UnitCondition {
     Normal,
     Upgraded,
@@ -337,15 +173,27 @@ impl UnitCondition {
 }
 
 #[derive(Component)]
-pub struct UnitSprite;
-
-#[derive(Component)]
 pub struct Gravity {
     pub vy: f32,
 }
 
-#[derive(Component)]
-pub struct Cooldown(pub Timer);
+#[derive(Component, Deref, DerefMut)]
+pub struct DashTimer(pub Timer);
+
+impl Default for DashTimer {
+    fn default() -> Self {
+        DashTimer(Timer::from_seconds(0.3, false))
+    }
+}
+
+#[derive(Component, Deref, DerefMut)]
+pub struct DashCooldown(pub Timer);
+
+impl Default for DashCooldown {
+    fn default() -> Self {
+        DashCooldown(Timer::from_seconds(0.25, false))
+    }
+}
 
 pub struct UnitAttack(pub Entity);
 
@@ -357,131 +205,147 @@ pub struct LifeChunks(pub Vec<Entity>);
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
-pub fn animate_unit_sprites(
-    time: Res<Time>,
+pub fn update_units(
     mut commands: Commands,
-    texture_atlases: Res<Assets<TextureAtlas>>,
-    mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut ev_unit_attack: EventWriter<UnitAttack>,
-    mut app_state: ResMut<State<AppState>>,
-    units_q: Query<(
-        Entity,
-        &UnitState,
-        &UnitCondition,
-        &UnitAnimations,
-        &Orientation,
-        &Children,
-        Option<&Player>,
+    mut ev_unit_changed: EventReader<UnitChanged>,
+    mut units_q: Query<(
+        &UnitKind,
+        &mut UnitCondition,
+        &mut UnitState,
+        &mut TextureAtlasSprite,
+        &mut Handle<Aseprite>,
+        &mut AsepriteAnimation,
+        &mut Orientation,
     )>,
-    mut sprites_q: Query<(&mut Animation, &mut TextureAtlasSprite), With<UnitSprite>>,
+    aseprite_handles: Res<AsepriteHandles>,
 ) {
-    for (unit, unit_state, &unit_condition, unit_anims, &orientation, children, is_player) in
-        units_q.iter()
+    for &UnitChanged {
+        unit,
+        new_state,
+        new_condition,
+        new_orientation,
+    } in ev_unit_changed.iter()
     {
-        let &unit_sprite = children
-            .iter()
-            .find(|&&c| sprites_q.get_mut(c).is_ok())
-            .unwrap();
+        let Ok((
+            unit_kind,
+            mut unit_condition,
+            mut unit_state,
+            mut sprite_atlas,
+            mut sprite_handle,
+            mut animation,
+            mut orientation,
 
-        let (mut anim, mut sprite) = sprites_q.get_mut(unit_sprite).unwrap();
-
-        anim.timer.tick(time.delta());
-        if !anim.timer.just_finished() {
+        )) = units_q.get_mut(unit) else {
             continue;
-        }
+        };
 
-        match anim.count.as_mut() {
-            // This is a finite animation
-            Some(count) => {
-                if *count != 0 {
-                    *count -= 1;
-                    let texture_atlas = texture_atlases
-                        .get(&unit_anims.atlas_for(unit_state, &unit_condition))
-                        .unwrap();
-                    sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+        if let Some(new_state) = new_state {
+            *animation = AsepriteAnimation::from(unit_kind.anim_tag(new_state, *unit_condition));
 
-                    if *count == 1 && matches!(unit_state, UnitState::Attack) && is_player.is_some()
-                    {
-                        ev_unit_attack.send(UnitAttack(unit));
-                    }
-                }
-                // Animation is finished
-                else {
-                    if matches!(unit_state, UnitState::Die) && is_player.is_some() {
-                        app_state.set(AppState::GameOver).ok();
-                        return;
-                    }
-
-                    let mut new_state = UnitState::Stand;
+            match new_state {
+                UnitState::Stand | UnitState::Fall => {
                     if let UnitState::Dash = *unit_state {
                         commands
                             .entity(unit)
-                            .insert(Cooldown(Timer::from_seconds(0.25, false)));
-                        new_state = UnitState::Fall;
+                            .insert(DashCooldown::default())
+                            .remove::<DashTimer>();
                     }
-
                     commands.entity(unit).remove::<Movements>();
-                    ev_unit_changed.send(UnitChanged {
-                        unit,
-                        new_state,
-                        new_condition: unit_condition,
-                    });
                 }
+
+                UnitState::Jump => {
+                    commands.entity(unit).insert(Gravity { vy: 500. });
+                }
+
+                UnitState::Dash => {
+                    commands.entity(unit).insert(DashTimer::default());
+                }
+
+                _ => (),
             }
-            // This is an infinite animation
-            None => {
-                let texture_atlas = texture_atlases
-                    .get(&unit_anims.atlas_for(unit_state, &unit_condition))
-                    .unwrap();
-                sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
-                sprite.flip_x = orientation.flip_x();
-            }
+
+            *unit_state = new_state;
+        }
+
+        if let Some(new_condition) = new_condition {
+            *sprite_handle = unit_kind.asperite_handle(&aseprite_handles, new_condition);
+            *animation = AsepriteAnimation::from(unit_kind.anim_tag(*unit_state, new_condition));
+            commands.entity(unit).remove::<TextureAtlasSprite>();
+
+            *unit_condition = new_condition;
+        }
+
+        if let Some(new_orientation) = new_orientation {
+            sprite_atlas.flip_x = new_orientation.flip_x();
+            *orientation = new_orientation;
         }
     }
 }
 
-pub fn update_units(
-    mut commands: Commands,
-    mut ev_unit_changed: ResMut<Events<UnitChanged>>,
-    units_q: Query<(&UnitAnimations, &Orientation, &Children)>,
-    sprites_q: Query<Entity, With<UnitSprite>>,
+pub fn reorient_units_on_sprite_change(
+    mut units_q: Query<
+        (&mut TextureAtlasSprite, &Orientation),
+        (With<UnitKind>, Changed<TextureAtlasSprite>),
+    >,
 ) {
-    let changes_by_unit = ev_unit_changed
-        .drain()
-        .map(|change| (change.unit, change))
-        .collect::<HashMap<_, _>>();
+    for (mut sprite_atlas, orientation) in &mut units_q {
+        sprite_atlas.flip_x = orientation.flip_x();
+    }
+}
 
-    for UnitChanged {
-        unit,
-        new_state,
-        new_condition,
-    } in changes_by_unit.into_values()
-    {
-        let (unit_anims, &orientation, children) = match units_q.get(unit) {
-            Ok(q_res) => q_res,
-            Err(_) => continue,
-        };
+pub fn transition_units(
+    time: Res<Time>,
+    units_q: Query<(
+        Entity,
+        &UnitState,
+        Option<&Player>,
+        Option<&DashTimer>,
+        &Handle<Aseprite>,
+        &AsepriteAnimation,
+    )>,
+    aseprites: Res<Assets<Aseprite>>,
+    mut ev_unit_changed: EventWriter<UnitChanged>,
+    mut ev_unit_attack: EventWriter<UnitAttack>,
+    mut app_state: ResMut<State<AppState>>,
+) {
+    for (unit, &unit_state, is_player, dash, handle, anim) in &units_q {
+        let Some(aseprite) = aseprites.get(handle) else { continue };
+        match unit_state {
+            UnitState::Attack => {
+                let remaining_frames = anim.remaining_tag_frames(aseprite.info());
+                let frame_finished = anim.frame_finished(aseprite.info(), time.delta());
+                if remaining_frames == 1 && frame_finished {
+                    ev_unit_attack.send(UnitAttack(unit));
+                }
+                if remaining_frames == 0 && frame_finished {
+                    ev_unit_changed.send(UnitChanged::entity(unit).new_state(UnitState::Stand));
+                }
+            }
 
-        let unit_sprite = children
-            .iter()
-            .find_map(|&c| sprites_q.get(c).ok())
-            .unwrap();
-        commands.entity(unit_sprite).despawn();
-        let unit_sprite = spawn_unit_sprite(
-            &mut commands,
-            unit_anims,
-            &new_state,
-            &new_condition,
-            &orientation,
-        );
+            UnitState::Dash => match dash {
+                Some(dash) if dash.just_finished() => {
+                    ev_unit_changed.send(UnitChanged::entity(unit).new_state(UnitState::Fall))
+                }
+                _ => (),
+            },
 
-        commands
-            .entity(unit)
-            .push_children(&[unit_sprite])
-            .insert(new_state);
+            UnitState::Wound => {
+                let remaining_frames = anim.remaining_tag_frames(aseprite.info());
+                let frame_finished = anim.frame_finished(aseprite.info(), time.delta());
+                if remaining_frames == 0 && frame_finished {
+                    ev_unit_changed.send(UnitChanged::entity(unit).new_state(UnitState::Stand));
+                }
+            }
 
-        if let UnitState::Jump = new_state {
-            commands.entity(unit).insert(Gravity { vy: 500. });
+            UnitState::Die if is_player.is_some() => {
+                let remaining_frames = anim.remaining_tag_frames(aseprite.info());
+                let frame_finished = anim.frame_finished(aseprite.info(), time.delta());
+                if remaining_frames == 0 && frame_finished {
+                    app_state.set(AppState::GameOver).ok();
+                }
+            }
+
+            _ => (),
         }
     }
 }
@@ -554,17 +418,10 @@ pub fn unit_attacks_ape(
 
 pub fn fall_units(
     time: Res<Time>,
-    mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut units_q: Query<(
-        Entity,
-        &UnitState,
-        &UnitCondition,
-        &mut Transform,
-        &mut Gravity,
-    )>,
+    mut units_q: Query<(Entity, &UnitState, &mut Transform, &mut Gravity)>,
 ) {
-    for (unit, unit_state, &unit_condition, mut transform, mut gravity) in units_q.iter_mut() {
+    for (unit, unit_state, mut transform, mut gravity) in units_q.iter_mut() {
         gravity.vy -= 1000. * time.delta_seconds();
         transform.translation.y += gravity.vy * time.delta_seconds();
 
@@ -575,12 +432,7 @@ pub fn fall_units(
 
             match *unit_state {
                 UnitState::Jump | UnitState::Fall => {
-                    commands.entity(unit).remove::<Movements>();
-                    ev_unit_changed.send(UnitChanged {
-                        unit,
-                        new_state: UnitState::Stand,
-                        new_condition: unit_condition,
-                    });
+                    ev_unit_changed.send(UnitChanged::entity(unit).new_state(UnitState::Stand));
                 }
                 _ => (),
             }
@@ -588,8 +440,14 @@ pub fn fall_units(
     }
 }
 
-pub fn cooldown_units(time: Res<Time>, mut units_q: Query<&mut Cooldown>) {
+pub fn tick_dashes(time: Res<Time>, mut units_q: Query<&mut DashTimer>) {
+    for mut timer in units_q.iter_mut() {
+        timer.tick(time.delta());
+    }
+}
+
+pub fn cooldown_dashes(time: Res<Time>, mut units_q: Query<&mut DashCooldown>) {
     for mut cooldown in units_q.iter_mut() {
-        cooldown.0.tick(time.delta());
+        cooldown.tick(time.delta());
     }
 }

@@ -11,7 +11,7 @@ pub fn spawn_game_state(
     spawn_background(commands, asset_server);
     spawn_platform(commands, asset_server);
 
-    spawn_player(commands, asset_server, texture_atlases);
+    spawn_player(commands, asset_server);
     spawn_life_hud(commands, asset_server);
 
     spawn_eth_hud(commands, asset_server);
@@ -26,7 +26,7 @@ pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("background.png"),
             transform: Transform::from_xyz(0., 0., 0.),
-            ..Default::default()
+            ..default()
         })
         .insert(Scenary);
 }
@@ -36,7 +36,7 @@ pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
         .spawn_bundle(SpriteBundle {
             texture: asset_server.load("platform.png"),
             transform: Transform::from_xyz(0., -270., 1.),
-            ..Default::default()
+            ..default()
         })
         .insert(Scenary);
 }
@@ -45,7 +45,7 @@ pub fn spawn_camera(commands: &mut Commands) {
     let projection = OrthographicProjection {
         scaling_mode: ScalingMode::FixedVertical(GLOBAL_WIDTH / GLOBAL_HEIGHT),
         scale: PROJECTION_SCALE,
-        ..Default::default()
+        ..default()
     };
 
     let mut camera = Camera2dBundle::default();
@@ -85,7 +85,7 @@ pub fn spawn_gameover_screen(
             .with_alignment(alignment),
             visibility: visibility.clone(),
             transform: Transform::from_xyz(0., 180., 10.),
-            ..Default::default()
+            ..default()
         })
         .insert(GameoverElement)
         .with_children(|parent| {
@@ -95,10 +95,10 @@ pub fn spawn_gameover_screen(
                     transform: Transform {
                         scale: Vec3::splat(0.4),
                         translation: Vec3::new(0., -130., 0.),
-                        ..Default::default()
+                        ..default()
                     },
                     visibility: visibility.clone(),
-                    ..Default::default()
+                    ..default()
                 })
                 .insert(GameoverElement);
 
@@ -115,7 +115,7 @@ pub fn spawn_gameover_screen(
                     .with_alignment(alignment),
                     visibility: visibility.clone(),
                     transform: Transform::from_xyz(-80., -300., 0.),
-                    ..Default::default()
+                    ..default()
                 })
                 .insert(ScoreText)
                 .insert(GameoverElement);
@@ -126,10 +126,10 @@ pub fn spawn_gameover_screen(
                     transform: Transform {
                         scale: Vec3::splat(0.6),
                         translation: Vec3::new(0., -283., 0.),
-                        ..Default::default()
+                        ..default()
                     },
                     visibility: visibility.clone(),
-                    ..Default::default()
+                    ..default()
                 })
                 .insert(ScoreTextIcon)
                 .insert(GameoverElement);
@@ -147,10 +147,32 @@ pub fn spawn_gameover_screen(
                     .with_alignment(alignment),
                     visibility: visibility.clone(),
                     transform: Transform::from_xyz(0., -380., 0.),
-                    ..Default::default()
+                    ..default()
                 })
                 .insert(GameoverElement);
         });
+}
+
+#[derive(Debug, Default, Deref, DerefMut)]
+pub struct AsepriteHandles(HashMap<&'static str, Handle<Aseprite>>);
+
+impl AsepriteHandles {
+    pub fn init(&mut self, commands: &mut Commands, asset_server: &AssetServer) {
+        for asprite_path in [sprites::Paladin::PATH, sprites::Crusader::PATH] {
+            let aseprite = asset_server.load(asprite_path);
+            self.insert(asprite_path, aseprite.clone());
+            commands.spawn_bundle(AsepriteBundle {
+                aseprite,
+                ..default()
+            });
+        }
+    }
+
+    pub fn get_handle(&self, aseprite_path: &'static str) -> Handle<Aseprite> {
+        self.get(aseprite_path)
+            .map(Clone::clone)
+            .unwrap_or_default()
+    }
 }
 
 ////////////////////////////////////// Components //////////////////////////////////////
@@ -238,6 +260,7 @@ pub fn despawn_game_state(
         Entity,
         Or<(
             With<Player>,
+            With<AsepriteAnimation>,
             With<LifeHud>,
             With<Ape>,
             With<DeadApesHud>,

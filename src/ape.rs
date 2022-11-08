@@ -29,13 +29,13 @@ pub fn spawn_ape(
             transform: Transform {
                 scale: Vec3::splat(0.8),
                 translation: Vec3::new(flank.start_pos(), 0., 5.),
-                ..Default::default()
+                ..default()
             },
             sprite: Sprite {
                 flip_x: flank.flip_x(),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .insert(ApeWoundHandle(texture_atlases.add(ape_wound_atlas)))
         .insert(ApeWoundWidth(170. * 0.8))
@@ -86,9 +86,9 @@ pub fn spawn_ape_attack_init(commands: &mut Commands, ape: Entity, attack_spec: 
             transform: Transform::from_xyz(offset_x, 0., 10.),
             sprite: TextureAtlasSprite {
                 flip_x: attack_spec.flank.flip_x(),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .insert(StagedAnimation::init(
             init_duration.clone(),
@@ -118,10 +118,10 @@ pub fn spawn_ape_attack_on(commands: &mut Commands, ape: Entity, attack_spec: &A
             transform: Transform::from_xyz(offset_x, 0., 10.),
             sprite: TextureAtlasSprite {
                 flip_x: attack_spec.flank.flip_x(),
-                ..Default::default()
+                ..default()
             },
 
-            ..Default::default()
+            ..default()
         })
         .insert(StagedAnimation::on(on_duration.clone(), on_timer.clone()))
         .insert(*attack_range)
@@ -144,9 +144,9 @@ pub fn spawn_ape_damaged_anim(
             transform: Transform::from_xyz(0., 0., 9.),
             sprite: TextureAtlasSprite {
                 flip_x: flank.flip_x(),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .insert(Animation {
             timer: Timer::from_seconds(0.08, true),
@@ -177,9 +177,9 @@ pub fn spawn_ape_damaged_anim(
                 transform: Transform {
                     scale: Vec3::splat(0.4),
                     translation: Vec3::new(-rect_x / 2. - 20., 0., 0.),
-                    ..Default::default()
+                    ..default()
                 },
-                ..Default::default()
+                ..default()
             })
             .id();
         commands.entity(healthbar).push_children(&[icon]);
@@ -201,9 +201,9 @@ pub fn spawn_dead_apes_hud(
             transform: Transform {
                 scale: Vec3::splat(0.15),
                 translation: Vec3::new(505., 275., 999.),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .id();
 
@@ -222,7 +222,7 @@ pub fn spawn_dead_apes_hud(
                 horizontal: HorizontalAlign::Left,
             }),
             transform: Transform::from_xyz(165., -25., 0.),
-            ..Default::default()
+            ..default()
         })
         .insert(DeadApesText)
         .id();
@@ -470,17 +470,9 @@ pub fn ape_attacks_player_collision(
                 }
 
                 if health_chunks.0.is_empty() {
-                    ev_unit_changed.send(UnitChanged {
-                        unit: player,
-                        new_state: UnitState::Die,
-                        new_condition: player_condition,
-                    });
+                    ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Die));
                 } else {
-                    ev_unit_changed.send(UnitChanged {
-                        unit: player,
-                        new_state: UnitState::Wound,
-                        new_condition: player_condition,
-                    });
+                    ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Wound));
                 }
             }
         }

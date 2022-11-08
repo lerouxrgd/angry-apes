@@ -1,11 +1,12 @@
 [package]
 name = "angry-apes"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
 bevy = "0.8"
+bevy_mod_aseprite = "0.1"
 bevy_embedded_assets = "0.4"
 bevy_prototype_lyon = "0.6"
 lyon_tessellation = "0.17"

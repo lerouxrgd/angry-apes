@@ -23,9 +23,9 @@ pub fn spawn_eth(commands: &mut Commands, position: Vec3, eth_handle: &EthHandle
             transform: Transform {
                 translation: position,
                 scale: Vec3::splat(1.2),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .insert(Animation {
             timer: Timer::from_seconds(0.12, true),
@@ -59,9 +59,9 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
             transform: Transform {
                 scale: Vec3::splat(0.5),
                 translation: Vec3::new(-18., -7., 0.),
-                ..Default::default()
+                ..default()
             },
-            ..Default::default()
+            ..default()
         })
         .id();
     commands.entity(outer).push_children(&[icon]);
@@ -171,20 +171,10 @@ pub fn player_collects_eth(
     mut picked_eth_at: ResMut<EthPicked>,
     mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut player_q: Query<
-        (
-            Entity,
-            &Transform,
-            &mut EthOwned,
-            &UnitState,
-            &mut UnitCondition,
-        ),
-        With<Player>,
-    >,
+    mut player_q: Query<(Entity, &Transform, &mut EthOwned), With<Player>>,
     eth_q: Query<(Entity, &Eth, &Transform)>,
 ) {
-    let (player, player_transform, mut player_eth, &player_state, mut player_condition) =
-        player_q.single_mut();
+    let (player, player_transform, mut player_eth) = player_q.single_mut();
     let player_x = player_transform.translation.x;
     let player_y = player_transform.translation.y;
 
@@ -196,13 +186,8 @@ pub fn player_collects_eth(
             picked_eth_at.0 = Instant::now();
 
             if player_eth.is_full() {
-                let new_condition = UnitCondition::Upgraded;
-                *player_condition = new_condition;
-                ev_unit_changed.send(UnitChanged {
-                    unit: player,
-                    new_state: player_state,
-                    new_condition,
-                });
+                ev_unit_changed
+                    .send(UnitChanged::entity(player).new_condition(UnitCondition::Upgraded));
             }
         }
     }
@@ -211,20 +196,16 @@ pub fn player_collects_eth(
 pub fn decay_player_eth(
     time: Res<Time>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut player_q: Query<(Entity, &mut EthOwned, &UnitState, &mut UnitCondition), With<Player>>,
+    mut player_q: Query<(Entity, &mut EthOwned, &mut UnitCondition), With<Player>>,
 ) {
-    let (player, mut player_eth, &player_state, mut player_condition) = player_q.single_mut();
+    let (player, mut player_eth, mut player_condition) = player_q.single_mut();
 
     if let UnitCondition::Upgraded = &*player_condition {
         player_eth.remove(2. * time.delta_seconds());
         if player_eth.is_empty() {
             let new_condition = UnitCondition::Normal;
             *player_condition = new_condition;
-            ev_unit_changed.send(UnitChanged {
-                unit: player,
-                new_state: player_state,
-                new_condition,
-            });
+            ev_unit_changed.send(UnitChanged::entity(player).new_condition(new_condition));
         }
     }
 }

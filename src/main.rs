@@ -26,6 +26,9 @@ mod prelude {
     pub use bevy::render::texture::ImageSettings;
     pub use bevy::text::Text2dSize;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
+    pub use bevy_mod_aseprite::{
+        Aseprite, AsepriteAnimation, AsepriteBundle, AsepritePlugin, AsepriteTag,
+    };
     pub use bevy_prototype_lyon::prelude::{
         DrawMode, FillMode, Geometry, GeometryBuilder, Path as TessPath, ShapePlugin, StrokeMode,
     };
@@ -33,6 +36,12 @@ mod prelude {
     pub use lyon_tessellation as tess;
     pub use rand::seq::SliceRandom;
     pub use rand_distr::{Beta, Distribution};
+
+    pub mod sprites {
+        use bevy_mod_aseprite::aseprite;
+        aseprite!(pub Paladin, "player_paladin.ase");
+        aseprite!(pub Crusader, "player_crusader.ase");
+    }
 
     pub use crate::ape::*;
     pub use crate::common::*;
@@ -54,7 +63,7 @@ fn main() {
             title: "Angry Apes".to_string(),
             width: GLOBAL_WIDTH,
             height: GLOBAL_HEIGHT,
-            ..Default::default()
+            ..default()
         })
         .insert_resource(ImageSettings::default_nearest())
         // Setup plugins
@@ -62,15 +71,12 @@ fn main() {
             group.add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin)
         })
         .add_plugin(ShapePlugin)
+        .add_plugin(AsepritePlugin)
         // Initialize game
         .add_startup_system(setup)
         .add_state(AppState::InGame)
         // Process inputs at the very beginning
-        .add_stage_after(
-            CoreStage::PreUpdate,
-            "inputs",
-            SystemStage::single_threaded(),
-        )
+        .add_stage_after(CoreStage::PreUpdate, "inputs", SystemStage::parallel())
         .add_system_set_to_stage("inputs", State::<AppState>::get_driver())
         .add_system_set_to_stage(
             "inputs",
@@ -78,16 +84,18 @@ fn main() {
                 .with_system(gamepad_connection_events.before("input"))
                 .with_system(gamepad_input.label("input"))
                 .with_system(keyboard_input.label("input"))
-                .with_system(update_units.after("input")),
+                .with_system(update_units.after("input"))
+                .with_system(transition_units.after("input"))
+                .with_system(reorient_units_on_sprite_change.after("input")),
         )
         .add_system_set(
             SystemSet::on_update(AppState::InGame)
                 // Player related systems
                 .with_system(move_units)
                 .with_system(fall_units)
-                .with_system(cooldown_units)
-                .with_system(animate_unit_sprites)
                 .with_system(unit_attacks_ape)
+                .with_system(tick_dashes)
+                .with_system(cooldown_dashes)
                 // Eth related systems
                 .with_system(make_eth)
                 .with_system(animate_eth)
@@ -104,21 +112,20 @@ fn main() {
                 .with_system(display_dead_apes_hud),
         )
         // Gameover related systems
-        .add_system_set(SystemSet::on_enter(AppState::GameOver).with_system(despawn_game_state))
-        .add_system_set(SystemSet::on_update(AppState::GameOver).with_system(gameover_screen))
-        .add_system_set(SystemSet::on_exit(AppState::GameOver).with_system(respawn_game_state))
-        // Process unit changes at the end
-        .add_stage_before(
-            CoreStage::PostUpdate,
-            "update_units",
-            SystemStage::single_threaded(),
-        )
-        .add_system_set_to_stage("update_units", State::<AppState>::get_driver())
         .add_system_set_to_stage(
-            "update_units",
-            SystemSet::on_update(AppState::InGame).with_system(update_units),
+            "inputs",
+            SystemSet::on_enter(AppState::GameOver).with_system(despawn_game_state),
+        )
+        .add_system_set_to_stage(
+            "inputs",
+            SystemSet::on_update(AppState::GameOver).with_system(gameover_screen),
+        )
+        .add_system_set_to_stage(
+            "inputs",
+            SystemSet::on_exit(AppState::GameOver).with_system(respawn_game_state),
         )
         // Game logic resources
+        .init_resource::<AsepriteHandles>()
         .init_resource::<Events<UnitChanged>>()
         .init_resource::<Events<UnitAttack>>()
         .init_resource::<InputKind>()
@@ -130,12 +137,16 @@ fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut aseprite_handles: ResMut<AsepriteHandles>,
 ) {
+    aseprite_handles.init(&mut commands, &asset_server);
+    init_eth(&mut commands, &asset_server, &mut texture_atlases);
+
     let font_handle = spawn_font(&mut commands, &asset_server);
     let ape_icon_h = init_ape_icon(&mut commands, &asset_server);
-    init_eth(&mut commands, &asset_server, &mut texture_atlases);
-    spawn_camera(&mut commands);
     spawn_gameover_screen(&mut commands, &asset_server, &font_handle, &ape_icon_h);
+
+    spawn_camera(&mut commands);
 
     spawn_game_state(
         &mut commands,

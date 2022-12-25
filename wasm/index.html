@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Angry Apes</title>
+    <style>
+        body {
+            background: #404040;
+        }
+
+        /* Position canvas in center-top: */
+        canvas {
+            margin-right: auto;
+            margin-left: auto;
+            display: block;
+            position: absolute;
+            top: 0%;
+            left: 50%;
+            transform: translate(-50%, 0%);
+        }
+
+        *:focus {
+            outline: none;
+        }
+
+        .centered {
+            margin-right: auto;
+            margin-left: auto;
+            display: block;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #f0f0f0;
+            font-size: 24px;
+            font-family: Ubuntu-Light, Helvetica, sans-serif;
+            text-align: center;
+        }
+
+        /* ---------------------------------------------- */
+        /* Loading animation from https://loading.io/css/ */
+        .lds-dual-ring {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+        }
+
+        .lds-dual-ring:after {
+            content: " ";
+            display: block;
+            width: 24px;
+            height: 24px;
+            margin: 0px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            border-color: #fff transparent #fff transparent;
+            animation: lds-dual-ring 1.2s linear infinite;
+        }
+
+        @keyframes lds-dual-ring {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <script type="module">
+      import init from "./angry-apes.js";
+
+      await init().catch(on_wasm_error);
+      document.getElementById("center_text").remove();
+      document.getElementsByTagName('canvas')[0].focus();
+
+      function on_wasm_error(error) {
+          console.error("Failed to start: " + error);
+          document.getElementById("center_text").innerHTML = `
+              <p>
+                  An error occurred during loading:
+              </p>
+              <p style="font-family:Courier New">
+                  ${error}
+              </p>
+              <p style="font-size:14px">
+                  Make sure you use a modern browser with WebGL and WASM enabled.
+              </p>`;
+      }
+    </script>
+  </head>
+  <body>
+    <div class="centered" id="center_text">
+      <p style="font-size:16px">
+        Loading…
+      </p>
+      <div class="lds-dual-ring"></div>
+    </div>
+  </body>
+</html>

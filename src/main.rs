@@ -82,8 +82,7 @@ fn main() {
             "inputs",
             SystemSet::on_update(AppState::InGame)
                 .with_system(gamepad_connection_events.before("input"))
-                .with_system(gamepad_input.label("input"))
-                .with_system(keyboard_input.label("input"))
+                .with_system(handle_input.label("input"))
                 .with_system(update_units.after("input"))
                 .with_system(transition_units.after("input"))
                 .with_system(reorient_units_on_sprite_change.after("input")),

@@ -25,6 +25,17 @@ pub enum Moving {
 pub struct Movements(pub HashSet<Moving>);
 
 impl Movements {
+    pub fn from_input(input: &PlayerInput<'_>) -> Self {
+        match input {
+            PlayerInput::Keyboard { keys } => Self::from_keyboard(keys),
+            PlayerInput::Gamepad {
+                gamepad,
+                buttons,
+                axes,
+            } => Self::from_gamepad(*gamepad, buttons, axes),
+        }
+    }
+
     pub fn from_keyboard(keys: &Input<KeyCode>) -> Self {
         let mut movements = HashSet::with_capacity(4);
 
@@ -129,6 +140,17 @@ pub enum Orientation {
 }
 
 impl Orientation {
+    pub fn from_input(input: &PlayerInput<'_>) -> Option<Self> {
+        match input {
+            PlayerInput::Keyboard { keys } => Self::from_keyboard(keys),
+            PlayerInput::Gamepad {
+                gamepad,
+                buttons,
+                axes,
+            } => Self::from_gamepad(*gamepad, buttons, axes),
+        }
+    }
+
     pub fn from_keyboard(keys: &Input<KeyCode>) -> Option<Self> {
         if keys.just_pressed(KeyCode::Left) && !keys.pressed(KeyCode::Right) {
             Some(Self::Left)
@@ -197,151 +219,167 @@ impl Orientation {
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
-pub fn keyboard_input(
+pub enum PlayerInput<'a> {
+    Keyboard {
+        keys: &'a Input<KeyCode>,
+    },
+    Gamepad {
+        gamepad: Gamepad,
+        buttons: &'a Input<GamepadButton>,
+        axes: &'a Axis<GamepadAxis>,
+    },
+}
+
+impl<'a> PlayerInput<'a> {
+    pub fn jump_detected(&self) -> bool {
+        match self {
+            Self::Keyboard { keys } => keys.just_pressed(KeyCode::Space),
+            Self::Gamepad {
+                gamepad, buttons, ..
+            } => buttons.just_pressed(GamepadButton {
+                gamepad: *gamepad,
+                button_type: GamepadButtonType::South,
+            }),
+        }
+    }
+
+    pub fn dash_detected(&self) -> bool {
+        match &self {
+            Self::Keyboard { keys } => {
+                keys.just_pressed(KeyCode::RControl) || keys.just_pressed(KeyCode::Tab)
+            }
+            Self::Gamepad {
+                gamepad, buttons, ..
+            } => buttons.just_pressed(GamepadButton {
+                gamepad: *gamepad,
+                button_type: GamepadButtonType::East,
+            }),
+        }
+    }
+
+    pub fn attack_detected(&self) -> bool {
+        match self {
+            Self::Keyboard { keys } => {
+                keys.just_pressed(KeyCode::Return) || keys.just_pressed(KeyCode::Key1)
+            }
+            Self::Gamepad {
+                gamepad, buttons, ..
+            } => {
+                buttons.just_pressed(GamepadButton {
+                    gamepad: *gamepad,
+                    button_type: GamepadButtonType::West,
+                }) || buttons.just_released(GamepadButton {
+                    gamepad: *gamepad,
+                    button_type: GamepadButtonType::West,
+                })
+            }
+        }
+    }
+
+    pub fn direction_pressed(&self) -> bool {
+        match self {
+            Self::Keyboard { keys } => {
+                keys.pressed(KeyCode::Left)
+                    || keys.pressed(KeyCode::Up)
+                    || keys.pressed(KeyCode::Down)
+                    || keys.pressed(KeyCode::Right)
+            }
+            Self::Gamepad {
+                gamepad,
+                buttons,
+                axes,
+            } => {
+                let dpad_left = buttons.pressed(GamepadButton {
+                    gamepad: *gamepad,
+                    button_type: GamepadButtonType::DPadLeft,
+                });
+                let dpad_right = buttons.pressed(GamepadButton {
+                    gamepad: *gamepad,
+                    button_type: GamepadButtonType::DPadRight,
+                });
+
+                let left_stick_x = axes
+                    .get(GamepadAxis {
+                        gamepad: *gamepad,
+                        axis_type: GamepadAxisType::LeftStickX,
+                    })
+                    .unwrap();
+                let left_stick_y = axes
+                    .get(GamepadAxis {
+                        gamepad: *gamepad,
+                        axis_type: GamepadAxisType::LeftStickY,
+                    })
+                    .unwrap();
+
+                dpad_left || dpad_right || left_stick_x != 0. || left_stick_y != 0.
+            }
+        }
+    }
+
+    pub fn direction_just_released(&self) -> bool {
+        match self {
+            Self::Keyboard { keys } => {
+                keys.just_released(KeyCode::Left)
+                    || keys.just_released(KeyCode::Up)
+                    || keys.just_released(KeyCode::Down)
+                    || keys.just_released(KeyCode::Right)
+            }
+            Self::Gamepad {
+                gamepad,
+                buttons,
+                axes,
+            } => {
+                let dpad_left = buttons.just_released(GamepadButton {
+                    gamepad: *gamepad,
+                    button_type: GamepadButtonType::DPadLeft,
+                });
+                let dpad_right = buttons.just_released(GamepadButton {
+                    gamepad: *gamepad,
+                    button_type: GamepadButtonType::DPadRight,
+                });
+
+                let left_stick_x = axes
+                    .get(GamepadAxis {
+                        gamepad: *gamepad,
+                        axis_type: GamepadAxisType::LeftStickX,
+                    })
+                    .unwrap();
+                let left_stick_y = axes
+                    .get(GamepadAxis {
+                        gamepad: *gamepad,
+                        axis_type: GamepadAxisType::LeftStickY,
+                    })
+                    .unwrap();
+
+                dpad_left || dpad_right || left_stick_x == 0. && left_stick_y == 0.
+            }
+        }
+    }
+}
+
+pub fn handle_input(
     input_kind: Res<InputKind>,
     keys: Res<Input<KeyCode>>,
-    mut commands: Commands,
-    mut ev_unit_changed: EventWriter<UnitChanged>,
-    player_q: Query<(Entity, &UnitState, &Orientation, &DashCooldown), With<Player>>,
-) {
-    if !matches!(&*input_kind, InputKind::Keyboard) {
-        return;
-    }
-
-    let (player, unit_state, &orientation, cooldown) = player_q.single();
-
-    let new_orientation = Orientation::from_keyboard(&keys);
-
-    if keyboard_jump_detected(&keys) {
-        match *unit_state {
-            UnitState::Stand | UnitState::Move => (),
-            _ => return,
-        }
-
-        ev_unit_changed.send(
-            UnitChanged::entity(player)
-                .new_state(UnitState::Jump)
-                .new_orientation(new_orientation),
-        );
-    } else if keyboard_dash_detected(&keys) {
-        match *unit_state {
-            UnitState::Stand | UnitState::Move | UnitState::Jump if cooldown.finished() => (),
-            _ => return,
-        }
-
-        commands
-            .entity(player)
-            .insert(Movements::from_orientation(orientation));
-
-        ev_unit_changed.send(
-            UnitChanged::entity(player)
-                .new_state(UnitState::Dash)
-                .new_orientation(new_orientation),
-        );
-    } else if keyboard_direction_pressed(&keys)
-        && !keys.just_pressed(KeyCode::Return)
-        && !keys.just_pressed(KeyCode::Key1)
-    {
-        match *unit_state {
-            UnitState::Attack | UnitState::Wound | UnitState::Die | UnitState::Dash => {
-                return;
-            }
-            UnitState::Move | UnitState::Jump | UnitState::Fall => {
-                let movements = Movements::from_keyboard(&keys);
-                let new_orientation = Orientation::from_movements(&movements);
-
-                commands.entity(player).insert(movements);
-
-                ev_unit_changed.send(UnitChanged::entity(player).new_orientation(new_orientation));
-            }
-            UnitState::Stand => {
-                commands
-                    .entity(player)
-                    .insert(Movements::from_keyboard(&keys));
-
-                ev_unit_changed.send(
-                    UnitChanged::entity(player)
-                        .new_state(UnitState::Move)
-                        .new_orientation(new_orientation),
-                );
-            }
-        }
-    } else if keyboard_direction_just_released(&keys) {
-        match *unit_state {
-            UnitState::Move => (),
-            _ => return,
-        }
-
-        commands.entity(player).remove::<Movements>();
-        ev_unit_changed.send(
-            UnitChanged::entity(player)
-                .new_state(UnitState::Stand)
-                .new_orientation(new_orientation),
-        );
-    } else if keys.just_pressed(KeyCode::Return)
-        || keys.just_released(KeyCode::Return)
-        || keys.just_pressed(KeyCode::Key1)
-        || keys.just_released(KeyCode::Key1)
-    {
-        match *unit_state {
-            UnitState::Attack | UnitState::Wound => return,
-            _ => (),
-        }
-
-        commands.entity(player).remove::<Movements>();
-        ev_unit_changed.send(
-            UnitChanged::entity(player)
-                .new_state(UnitState::Attack)
-                .new_orientation(new_orientation),
-        );
-    }
-}
-
-pub fn keyboard_jump_detected(keys: &Input<KeyCode>) -> bool {
-    keys.just_pressed(KeyCode::Space)
-}
-
-pub fn keyboard_dash_detected(keys: &Input<KeyCode>) -> bool {
-    keys.just_pressed(KeyCode::RControl) || keys.just_pressed(KeyCode::Tab)
-}
-
-pub fn keyboard_direction_pressed(keys: &Input<KeyCode>) -> bool {
-    keys.pressed(KeyCode::Left)
-        || keys.pressed(KeyCode::Up)
-        || keys.pressed(KeyCode::Down)
-        || keys.pressed(KeyCode::Right)
-}
-
-pub fn keyboard_direction_just_released(keys: &Input<KeyCode>) -> bool {
-    keys.just_released(KeyCode::Left)
-        || keys.just_released(KeyCode::Up)
-        || keys.just_released(KeyCode::Down)
-        || keys.just_released(KeyCode::Right)
-}
-
-pub fn gamepad_input(
-    input_kind: Res<InputKind>,
-    gamepads: Res<Gamepads>,
     buttons: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     mut commands: Commands,
     mut ev_unit_changed: EventWriter<UnitChanged>,
     player_q: Query<(Entity, &UnitState, &Orientation, &DashCooldown), With<Player>>,
 ) {
-    if !matches!(&*input_kind, InputKind::Gamepad) {
-        return;
-    }
-
-    let gamepad = Gamepad { id: 0 };
-    if !gamepads.contains(&gamepad) {
-        return;
-    }
+    let input = match *input_kind {
+        InputKind::Keyboard => PlayerInput::Keyboard { keys: &keys },
+        InputKind::Gamepad => PlayerInput::Gamepad {
+            gamepad: Gamepad { id: 0 },
+            buttons: &buttons,
+            axes: &axes,
+        },
+    };
 
     let (player, unit_state, &orientation, cooldown) = player_q.single();
 
-    let new_orientation = Orientation::from_gamepad(gamepad, &buttons, &axes);
+    let new_orientation = Orientation::from_input(&input);
 
-    if gamepad_jump_detected(gamepad, &buttons) {
+    if input.jump_detected() {
         match *unit_state {
             UnitState::Stand | UnitState::Move => (),
             _ => return,
@@ -352,7 +390,7 @@ pub fn gamepad_input(
                 .new_state(UnitState::Jump)
                 .new_orientation(new_orientation),
         );
-    } else if gamepad_dash_detected(gamepad, &buttons) {
+    } else if input.dash_detected() {
         match *unit_state {
             UnitState::Stand | UnitState::Move | UnitState::Jump if cooldown.finished() => (),
             _ => return,
@@ -367,18 +405,13 @@ pub fn gamepad_input(
                 .new_state(UnitState::Dash)
                 .new_orientation(new_orientation),
         );
-    } else if gamepad_direction_pressed(gamepad, &buttons, &axes)
-        && !buttons.just_pressed(GamepadButton {
-            gamepad,
-            button_type: GamepadButtonType::West,
-        })
-    {
+    } else if input.direction_pressed() && !input.attack_detected() {
         match *unit_state {
             UnitState::Attack | UnitState::Wound | UnitState::Die | UnitState::Dash => {
                 return;
             }
             UnitState::Move | UnitState::Jump | UnitState::Fall => {
-                let movements = Movements::from_gamepad(gamepad, &buttons, &axes);
+                let movements = Movements::from_input(&input);
                 let new_orientation = Orientation::from_movements(&movements);
 
                 commands.entity(player).insert(movements);
@@ -388,7 +421,7 @@ pub fn gamepad_input(
             UnitState::Stand => {
                 commands
                     .entity(player)
-                    .insert(Movements::from_gamepad(gamepad, &buttons, &axes));
+                    .insert(Movements::from_input(&input));
 
                 ev_unit_changed.send(
                     UnitChanged::entity(player)
@@ -397,7 +430,7 @@ pub fn gamepad_input(
                 );
             }
         }
-    } else if gamepad_direction_just_released(gamepad, &buttons, &axes) {
+    } else if input.direction_just_released() && !input.attack_detected() {
         match *unit_state {
             UnitState::Move => (),
             _ => return,
@@ -409,7 +442,7 @@ pub fn gamepad_input(
                 .new_state(UnitState::Stand)
                 .new_orientation(new_orientation),
         );
-    } else if gamepad_attack_detected(gamepad, &buttons) {
+    } else if input.attack_detected() {
         match *unit_state {
             UnitState::Attack | UnitState::Wound => return,
             _ => (),
@@ -422,90 +455,6 @@ pub fn gamepad_input(
                 .new_orientation(new_orientation),
         );
     }
-}
-
-pub fn gamepad_jump_detected(gamepad: Gamepad, buttons: &Input<GamepadButton>) -> bool {
-    buttons.just_pressed(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::South,
-    })
-}
-
-pub fn gamepad_dash_detected(gamepad: Gamepad, buttons: &Input<GamepadButton>) -> bool {
-    buttons.just_pressed(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::East,
-    })
-}
-
-pub fn gamepad_attack_detected(gamepad: Gamepad, buttons: &Input<GamepadButton>) -> bool {
-    buttons.just_pressed(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::West,
-    }) || buttons.just_released(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::West,
-    })
-}
-
-pub fn gamepad_direction_pressed(
-    gamepad: Gamepad,
-    buttons: &Input<GamepadButton>,
-    axes: &Axis<GamepadAxis>,
-) -> bool {
-    let dpad_left = buttons.pressed(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::DPadLeft,
-    });
-    let dpad_right = buttons.pressed(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::DPadRight,
-    });
-
-    let left_stick_x = axes
-        .get(GamepadAxis {
-            gamepad,
-            axis_type: GamepadAxisType::LeftStickX,
-        })
-        .unwrap();
-    let left_stick_y = axes
-        .get(GamepadAxis {
-            gamepad,
-            axis_type: GamepadAxisType::LeftStickY,
-        })
-        .unwrap();
-
-    dpad_left || dpad_right || left_stick_x != 0. || left_stick_y != 0.
-}
-
-pub fn gamepad_direction_just_released(
-    gamepad: Gamepad,
-    buttons: &Input<GamepadButton>,
-    axes: &Axis<GamepadAxis>,
-) -> bool {
-    let dpad_left = buttons.just_released(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::DPadLeft,
-    });
-    let dpad_right = buttons.just_released(GamepadButton {
-        gamepad,
-        button_type: GamepadButtonType::DPadRight,
-    });
-
-    let left_stick_x = axes
-        .get(GamepadAxis {
-            gamepad,
-            axis_type: GamepadAxisType::LeftStickX,
-        })
-        .unwrap();
-    let left_stick_y = axes
-        .get(GamepadAxis {
-            gamepad,
-            axis_type: GamepadAxisType::LeftStickY,
-        })
-        .unwrap();
-
-    dpad_left || dpad_right || left_stick_x == 0. && left_stick_y == 0.
 }
 
 pub fn gamepad_connection_events(

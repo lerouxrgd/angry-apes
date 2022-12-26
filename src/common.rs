@@ -23,7 +23,7 @@ pub fn spawn_game_state(
 
 pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: asset_server.load("background.png"),
             transform: Transform::from_xyz(0., 0., 0.),
             ..default()
@@ -33,7 +33,7 @@ pub fn spawn_background(commands: &mut Commands, asset_server: &AssetServer) {
 
 pub fn spawn_platform(commands: &mut Commands, asset_server: &AssetServer) {
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: asset_server.load("platform.png"),
             transform: Transform::from_xyz(0., -270., 1.),
             ..default()
@@ -51,11 +51,12 @@ pub fn spawn_camera(commands: &mut Commands) {
     let mut camera = Camera2dBundle::default();
     camera.projection = projection;
 
-    commands.spawn_bundle(camera);
+    commands.spawn(camera);
 }
 
-pub fn spawn_font(commands: &mut Commands, asset_server: &AssetServer) -> Handle<Font> {
+pub fn spawn_font(commands: &mut Commands, asset_server: &AssetServer) -> FontHandle {
     let font_handle: Handle<Font> = asset_server.load("FontsFree-Net-Monkey.ttf");
+    let font_handle = FontHandle(font_handle);
     commands.insert_resource(font_handle.clone());
     font_handle
 }
@@ -73,7 +74,7 @@ pub fn spawn_gameover_screen(
     let visibility = Visibility { is_visible: false };
 
     commands
-        .spawn_bundle(Text2dBundle {
+        .spawn(Text2dBundle {
             text: Text::from_section(
                 "You   have   been   funged",
                 TextStyle {
@@ -90,7 +91,7 @@ pub fn spawn_gameover_screen(
         .insert(GameoverElement)
         .with_children(|parent| {
             parent
-                .spawn_bundle(SpriteBundle {
+                .spawn(SpriteBundle {
                     texture: asset_server.load("toilet.png"),
                     transform: Transform {
                         scale: Vec3::splat(0.4),
@@ -103,7 +104,7 @@ pub fn spawn_gameover_screen(
                 .insert(GameoverElement);
 
             parent
-                .spawn_bundle(Text2dBundle {
+                .spawn(Text2dBundle {
                     text: Text::from_section(
                         "You   managed   to   kill   [ 0 ]",
                         TextStyle {
@@ -121,7 +122,7 @@ pub fn spawn_gameover_screen(
                 .insert(GameoverElement);
 
             parent
-                .spawn_bundle(SpriteBundle {
+                .spawn(SpriteBundle {
                     texture: ape_icon.0.clone(),
                     transform: Transform {
                         scale: Vec3::splat(0.6),
@@ -135,7 +136,7 @@ pub fn spawn_gameover_screen(
                 .insert(GameoverElement);
 
             parent
-                .spawn_bundle(Text2dBundle {
+                .spawn(Text2dBundle {
                     text: Text::from_section(
                         "Press   << attack >>   to   take  your  revenge   on   the   Apes",
                         TextStyle {
@@ -153,7 +154,7 @@ pub fn spawn_gameover_screen(
         });
 }
 
-#[derive(Debug, Default, Deref, DerefMut)]
+#[derive(Resource, Debug, Default, Deref, DerefMut)]
 pub struct AsepriteHandles(HashMap<&'static str, Handle<Aseprite>>);
 
 impl AsepriteHandles {
@@ -161,10 +162,13 @@ impl AsepriteHandles {
         for asprite_path in [sprites::Paladin::PATH, sprites::Crusader::PATH] {
             let aseprite = asset_server.load(asprite_path);
             self.insert(asprite_path, aseprite.clone());
-            commands.spawn_bundle(AsepriteBundle {
-                aseprite,
-                ..default()
-            });
+            let id = commands
+                .spawn(AsepriteBundle {
+                    aseprite,
+                    ..default()
+                })
+                .id();
+            commands.entity(id).despawn();
         }
     }
 
@@ -218,11 +222,11 @@ impl StagedAnimation {
 }
 
 #[derive(Clone, Component)]
-pub struct DurationTimer(pub Timer);
+pub struct DurationTimer(Timer);
 
 impl DurationTimer {
     pub fn from_seconds(duration: f32) -> Self {
-        Self(Timer::from_seconds(duration, false))
+        Self(Timer::from_seconds(duration, TimerMode::Once))
     }
 
     pub fn finished(&self) -> bool {
@@ -234,16 +238,16 @@ impl DurationTimer {
     }
 }
 
-#[derive(Component)]
-pub struct TriggerTimer(pub Timer);
+#[derive(Component, Deref, DerefMut)]
+pub struct TriggerTimer(Timer);
 
 impl Default for TriggerTimer {
     fn default() -> Self {
-        Self(Timer::from_seconds(3., true))
+        Self(Timer::from_seconds(3., TimerMode::Repeating))
     }
 }
 
-#[derive(Default)]
+#[derive(Resource, Default)]
 pub struct Score(pub usize);
 
 #[derive(Component)]
@@ -251,6 +255,9 @@ pub struct ScoreText;
 
 #[derive(Component)]
 pub struct ScoreTextIcon;
+
+#[derive(Resource, Deref, DerefMut, Debug, Clone)]
+pub struct FontHandle(Handle<Font>);
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
@@ -260,7 +267,6 @@ pub fn despawn_game_state(
         Entity,
         Or<(
             With<Player>,
-            With<AsepriteAnimation>,
             With<LifeHud>,
             With<Ape>,
             With<DeadApesHud>,
@@ -277,7 +283,7 @@ pub fn despawn_game_state(
 
 pub fn respawn_game_state(
     mut commands: Commands,
-    font_handle: Res<Handle<Font>>,
+    font_handle: Res<FontHandle>,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut text_q: Query<&mut Visibility, With<GameoverElement>>,
@@ -325,7 +331,7 @@ pub fn gameover_screen(
         }
         InputKind::Gamepad => {
             let gamepad = Gamepad { id: 0 };
-            if !gamepads.contains(&gamepad) {
+            if !gamepads.contains(gamepad) {
                 return;
             }
             if buttons.just_released(GamepadButton {

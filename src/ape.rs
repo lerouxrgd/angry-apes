@@ -19,12 +19,12 @@ pub fn spawn_ape(
         .unwrap();
 
     let ape_wound_image = asset_server.load(&format!("{ape_name}_wound.png"));
-    let ape_wound_atlas = TextureAtlas::from_grid(ape_wound_image, Vec2::new(600., 600.), 3, 1);
+    let ape_wound_atlas =
+        TextureAtlas::from_grid(ape_wound_image, Vec2::new(600., 600.), 3, 1, None, None);
 
     let ape = commands
-        .spawn()
-        .insert(Ape)
-        .insert_bundle(SpriteBundle {
+        .spawn(Ape)
+        .insert(SpriteBundle {
             texture: asset_server.load(&format!("{ape_name}.png")),
             transform: Transform {
                 scale: Vec3::splat(0.8),
@@ -49,19 +49,21 @@ pub fn spawn_ape(
         .with_offset(PROJECTION_SCALE / 2.);
 
     let laser_init_image = asset_server.load(&format!("{ape_name}_blinking_eyes.png"));
-    let laser_init_atlas = TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1);
+    let laser_init_atlas =
+        TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1, None, None);
 
     let laser_on_image = asset_server.load(&format!("{ape_name}_lasers.png"));
-    let laser_on_atlas = TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1);
+    let laser_on_atlas =
+        TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1, None, None);
 
     let ape_attack_spec = ApeAttackSpec {
         attack_range,
         init_h: texture_atlases.add(laser_init_atlas),
         init_duration: DurationTimer::from_seconds(0.6),
-        init_timer: Timer::from_seconds(0.1, true),
+        init_timer: Timer::from_seconds(0.1, TimerMode::Repeating),
         on_h: texture_atlases.add(laser_on_atlas),
         on_duration: DurationTimer::from_seconds(1.0),
-        on_timer: Timer::from_seconds(0.1, true),
+        on_timer: Timer::from_seconds(0.1, TimerMode::Repeating),
         flank,
     };
 
@@ -81,7 +83,7 @@ pub fn spawn_ape_attack_init(commands: &mut Commands, ape: Entity, attack_spec: 
     };
 
     let animation = commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn(SpriteSheetBundle {
             texture_atlas: attack_spec.init_h.clone(),
             transform: Transform::from_xyz(offset_x, 0., 10.),
             sprite: TextureAtlasSprite {
@@ -113,7 +115,7 @@ pub fn spawn_ape_attack_on(commands: &mut Commands, ape: Entity, attack_spec: &A
     };
 
     let animation = commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn(SpriteSheetBundle {
             texture_atlas: attack_spec.on_h.clone(),
             transform: Transform::from_xyz(offset_x, 0., 10.),
             sprite: TextureAtlasSprite {
@@ -139,7 +141,7 @@ pub fn spawn_ape_damaged_anim(
     flank: &Flank,
 ) -> Entity {
     let anim = commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn(SpriteSheetBundle {
             texture_atlas: wound_h.0.clone(),
             transform: Transform::from_xyz(0., 0., 9.),
             sprite: TextureAtlasSprite {
@@ -149,7 +151,7 @@ pub fn spawn_ape_damaged_anim(
             ..default()
         })
         .insert(Animation {
-            timer: Timer::from_seconds(0.08, true),
+            timer: Timer::from_seconds(0.08, TimerMode::Repeating),
             count: Some(4),
         })
         .insert(wound_h.clone())
@@ -164,7 +166,7 @@ pub fn spawn_ape_damaged_anim(
         };
         let builder = GeometryBuilder::new().add(&rect);
         let healthbar = commands
-            .spawn_bundle(builder.build(
+            .spawn(builder.build(
                 DrawMode::Fill(FillMode::color(Color::PINK)),
                 Transform::from_xyz(10., 300., 15.),
             ))
@@ -172,7 +174,7 @@ pub fn spawn_ape_damaged_anim(
         commands.entity(anim).push_children(&[healthbar]);
 
         let icon = commands
-            .spawn_bundle(SpriteBundle {
+            .spawn(SpriteBundle {
                 texture: ape_icon_h.0.clone(),
                 transform: Transform {
                     scale: Vec3::splat(0.4),
@@ -193,10 +195,9 @@ pub fn spawn_dead_apes_hud(
     font_handle: &Handle<Font>,
 ) {
     let dead_apes_hud = commands
-        .spawn()
-        .insert(DeadApesHud)
+        .spawn(DeadApesHud)
         .insert(DeadApesCounter(0))
-        .insert_bundle(SpriteBundle {
+        .insert(SpriteBundle {
             texture: asset_server.load("ape_icon_dead.png"),
             transform: Transform {
                 scale: Vec3::splat(0.15),
@@ -208,7 +209,7 @@ pub fn spawn_dead_apes_hud(
         .id();
 
     let count = commands
-        .spawn_bundle(Text2dBundle {
+        .spawn(Text2dBundle {
             text: Text::from_section(
                 "0",
                 TextStyle {
@@ -234,7 +235,7 @@ pub fn spawn_dead_apes_hud(
 #[derive(Component)]
 pub struct Ape;
 
-#[derive(Clone)]
+#[derive(Resource, Clone)]
 pub struct ApeIconHandle(pub Handle<Image>);
 
 #[derive(Clone, Component)]
@@ -306,9 +307,10 @@ pub struct DeadApesHud;
 #[derive(Component)]
 pub struct DeadApesText;
 
-#[derive(Component)]
+#[derive(Component, Deref)]
 pub struct DeadApesCounter(usize);
 
+#[derive(Component, Deref)]
 pub struct ApesAliveAt(Instant);
 
 impl Default for ApesAliveAt {
@@ -375,7 +377,7 @@ pub fn make_ape(
         *apes_alive_at = ApesAliveAt::default();
     }
 
-    if apes_alive_at.0.elapsed() > Duration::from_secs(3) {
+    if apes_alive_at.elapsed() > Duration::from_secs(3) {
         for flank in [Flank::Left, Flank::Right] {
             if !apes_flanks.contains(&flank) {
                 spawn_ape(&mut commands, &asset_server, &mut texture_atlases, flank);
@@ -419,8 +421,8 @@ pub fn trigger_ape_attack(
     apes_q: Query<(Entity, &ApeAttackSpec), With<Ape>>,
     mut trigger: Local<TriggerTimer>,
 ) {
-    trigger.0.tick(time.delta());
-    if trigger.0.just_finished() {
+    trigger.tick(time.delta());
+    if trigger.just_finished() {
         for (ape, attack_spec) in apes_q.iter() {
             spawn_ape_attack_init(&mut commands, ape, attack_spec);
         }
@@ -461,15 +463,13 @@ pub fn ape_attacks_player_collision(
         };
 
         if player_in_range {
-            commands.entity(player).remove::<Movements>();
-
             if !matches!(player_state, UnitState::Wound | UnitState::Die) {
                 let mut health_chunks = health_q.single_mut();
-                if let Some(chunk) = health_chunks.0.pop() {
+                if let Some(chunk) = health_chunks.pop() {
                     commands.entity(chunk).despawn();
                 }
 
-                if health_chunks.0.is_empty() {
+                if health_chunks.is_empty() {
                     ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Die));
                 } else {
                     ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Wound));
@@ -504,7 +504,7 @@ pub fn animate_apes_attacks(
                 timer.tick(time.delta());
 
                 if duration.finished() {
-                    commands.entity(id).despawn();
+                    commands.entity(id).despawn_recursive();
                     spawn_ape_attack_on(&mut commands, ape.get(), attack_spec);
                 } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
@@ -516,7 +516,7 @@ pub fn animate_apes_attacks(
                 duration.tick(time.delta());
 
                 if duration.finished() {
-                    commands.entity(id).despawn();
+                    commands.entity(id).despawn_recursive();
                 } else if timer.just_finished() {
                     let texture_atlas = texture_atlases.get(texture_atlas_h).unwrap();
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
@@ -556,11 +556,12 @@ pub fn animate_apes_wounds(
                 }
                 // Animation is finished
                 else {
-                    commands.entity(anim_id).despawn_recursive();
                     if life.current == 0. {
                         dead_counter.single_mut().0 += 1;
                         score.0 += 1;
                         commands.entity(ape.get()).despawn_recursive();
+                    } else {
+                        commands.entity(anim_id).despawn_recursive();
                     }
                 }
             }
@@ -574,5 +575,5 @@ pub fn display_dead_apes_hud(
     mut text_q: Query<&mut Text, With<DeadApesText>>,
 ) {
     let mut text = text_q.single_mut();
-    text.sections[0].value = counter.single().0.to_string();
+    text.sections[0].value = counter.single().to_string();
 }

@@ -2,6 +2,7 @@ use crate::prelude::*;
 
 ////////////////////////////////////// Components //////////////////////////////////////
 
+#[derive(Resource)]
 pub enum InputKind {
     Keyboard,
     Gamepad,
@@ -220,6 +221,7 @@ impl Orientation {
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub enum PlayerInput<'a> {
+    // TODO: Use ScanCode WASD instead
     Keyboard {
         keys: &'a Input<KeyCode>,
     },
@@ -436,7 +438,6 @@ pub fn handle_input(
             _ => return,
         }
 
-        commands.entity(player).remove::<Movements>();
         ev_unit_changed.send(
             UnitChanged::entity(player)
                 .new_state(UnitState::Stand)
@@ -448,7 +449,6 @@ pub fn handle_input(
             _ => (),
         }
 
-        commands.entity(player).remove::<Movements>();
         ev_unit_changed.send(
             UnitChanged::entity(player)
                 .new_state(UnitState::Attack)
@@ -464,7 +464,7 @@ pub fn gamepad_connection_events(
     for event in gamepad_event.iter() {
         match &event {
             GamepadEvent {
-                event_type: GamepadEventType::Connected,
+                event_type: GamepadEventType::Connected(_),
                 ..
             } => {
                 *input_kind = InputKind::Gamepad;

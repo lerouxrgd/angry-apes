@@ -4,18 +4,17 @@ use crate::prelude::*;
 
 pub fn spawn_player(commands: &mut Commands, asset_server: &AssetServer) {
     commands
-        .spawn()
-        .insert(Player)
+        .spawn(Player)
         .insert(UnitKind::Player)
-        .insert_bundle(VisibilityBundle::default())
+        .insert(VisibilityBundle::default())
         .insert(Gravity { vy: 0. })
         .insert(DashCooldown::default())
-        .insert_bundle(AsepriteBundle {
+        .insert(AsepriteBundle {
             aseprite: asset_server.load(sprites::Paladin::PATH),
             animation: AsepriteAnimation::from(sprites::Paladin::tags::STAND),
             ..default()
         })
-        .insert_bundle(TransformBundle::from_transform(Transform {
+        .insert(TransformBundle::from_transform(Transform {
             scale: Vec3::splat(1.5),
             translation: Vec3::new(0., -170., 999.),
             ..default()
@@ -27,14 +26,14 @@ pub fn spawn_player(commands: &mut Commands, asset_server: &AssetServer) {
 }
 
 pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
+    let (life_hud_x, life_hud_y) = (-557., 244.);
     let life_hud = commands
-        .spawn()
-        .insert(LifeHud)
-        .insert_bundle(SpriteBundle {
+        .spawn(LifeHud)
+        .insert(SpriteBundle {
             texture: asset_server.load("heart_icon.png"),
             transform: Transform {
+                translation: Vec3::new(life_hud_x, life_hud_y, 999.),
                 scale: Vec3::splat(0.13),
-                translation: Vec3::new(-557., 244., 999.),
                 ..default()
             },
             ..default()
@@ -42,21 +41,20 @@ pub fn spawn_life_hud(commands: &mut Commands, asset_server: &AssetServer) {
         .id();
 
     let mut chunks = vec![];
-    let mut offset = 200.;
+    let mut offset = life_hud_x + 25.;
     for _ in 0..5 {
         let chunk = commands
-            .spawn_bundle(SpriteBundle {
+            .spawn(SpriteBundle {
                 texture: asset_server.load("life_chunk.png"),
                 transform: Transform {
-                    scale: Vec3::splat(1.2),
-                    translation: Vec3::new(offset, 5., 0.),
+                    translation: Vec3::new(offset, life_hud_y, 999.),
+                    scale: Vec3::splat(0.15),
                     ..default()
                 },
                 ..default()
             })
             .id();
-        commands.entity(life_hud).push_children(&[chunk]);
-        offset += 120.;
+        offset += 15.;
         chunks.push(chunk);
     }
 
@@ -182,7 +180,7 @@ pub struct DashTimer(pub Timer);
 
 impl Default for DashTimer {
     fn default() -> Self {
-        DashTimer(Timer::from_seconds(0.3, false))
+        DashTimer(Timer::from_seconds(0.3, TimerMode::Once))
     }
 }
 
@@ -191,7 +189,7 @@ pub struct DashCooldown(pub Timer);
 
 impl Default for DashCooldown {
     fn default() -> Self {
-        DashCooldown(Timer::from_seconds(0.25, false))
+        DashCooldown(Timer::from_seconds(0.25, TimerMode::Once))
     }
 }
 
@@ -200,7 +198,7 @@ pub struct UnitAttack(pub Entity);
 #[derive(Component)]
 pub struct LifeHud;
 
-#[derive(Component)]
+#[derive(Component, Deref, DerefMut)]
 pub struct LifeChunks(pub Vec<Entity>);
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
@@ -243,14 +241,18 @@ pub fn update_units(
             *animation = AsepriteAnimation::from(unit_kind.anim_tag(new_state, *unit_condition));
 
             match new_state {
-                UnitState::Stand | UnitState::Fall => {
+                UnitState::Stand
+                | UnitState::Attack
+                | UnitState::Fall
+                | UnitState::Wound
+                | UnitState::Die => {
+                    commands.entity(unit).remove::<Movements>();
                     if let UnitState::Dash = *unit_state {
                         commands
                             .entity(unit)
                             .insert(DashCooldown::default())
                             .remove::<DashTimer>();
                     }
-                    commands.entity(unit).remove::<Movements>();
                 }
 
                 UnitState::Jump => {
@@ -270,6 +272,7 @@ pub fn update_units(
         if let Some(new_condition) = new_condition {
             *sprite_handle = unit_kind.asperite_handle(&aseprite_handles, new_condition);
             *animation = AsepriteAnimation::from(unit_kind.anim_tag(*unit_state, new_condition));
+            // TODO: consider some kind of animation.set_tag_frame()
             commands.entity(unit).remove::<TextureAtlasSprite>();
 
             *unit_condition = new_condition;
@@ -352,7 +355,7 @@ pub fn transition_units(
 
 pub fn move_units(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transform, &Movements)>) {
     for (unit_state, mut transform, movements) in units_q.iter_mut() {
-        for moving in movements.0.iter() {
+        for moving in movements.iter() {
             let velocity = match *unit_state {
                 UnitState::Dash => 600.,
                 _ => 150.,
@@ -378,7 +381,7 @@ pub fn move_units(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transfor
 
 pub fn unit_attacks_ape(
     mut commands: Commands,
-    mut ev_unit_attack: ResMut<Events<UnitAttack>>,
+    mut ev_unit_attack: EventReader<UnitAttack>,
     ape_icon: Res<ApeIconHandle>,
     units_q: Query<(&Transform, &UnitCondition)>,
     mut apes_q: Query<
@@ -393,7 +396,7 @@ pub fn unit_attacks_ape(
         With<Ape>,
     >,
 ) {
-    for UnitAttack(unit) in ev_unit_attack.drain() {
+    for &UnitAttack(unit) in ev_unit_attack.iter() {
         let (unit_transform, unit_condition) = match units_q.get(unit) {
             Ok(q_res) => q_res,
             Err(_) => return,

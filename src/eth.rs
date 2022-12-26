@@ -8,7 +8,7 @@ pub fn init_eth(
     texture_atlases: &mut Assets<TextureAtlas>,
 ) {
     let eth_image = asset_server.load("eth.png");
-    let eth_atlas = TextureAtlas::from_grid(eth_image, Vec2::new(50.0, 50.0), 1, 11);
+    let eth_atlas = TextureAtlas::from_grid(eth_image, Vec2::new(50.0, 50.0), 1, 11, None, None);
     let eth_atlas_h = texture_atlases.add(eth_atlas);
 
     commands.insert_resource(EthHandle(eth_atlas_h));
@@ -18,7 +18,7 @@ pub fn init_eth(
 
 pub fn spawn_eth(commands: &mut Commands, position: Vec3, eth_handle: &EthHandle) {
     commands
-        .spawn_bundle(SpriteSheetBundle {
+        .spawn(SpriteSheetBundle {
             texture_atlas: eth_handle.0.clone(),
             transform: Transform {
                 translation: position,
@@ -28,14 +28,14 @@ pub fn spawn_eth(commands: &mut Commands, position: Vec3, eth_handle: &EthHandle
             ..default()
         })
         .insert(Animation {
-            timer: Timer::from_seconds(0.12, true),
+            timer: Timer::from_seconds(0.12, TimerMode::Repeating),
             count: None,
         })
         .insert(Eth::default());
 }
 
 pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
-    let eth_hud = commands.spawn().insert(EthHud).id();
+    let eth_hud = commands.spawn(EthHud).id();
 
     let outer_rect = shapes::Rectangle {
         extents: Vec2::new(250., 16.),
@@ -44,7 +44,7 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
     let builder = GeometryBuilder::new().add(&outer_rect);
     let outer = commands
         .entity(eth_hud)
-        .insert_bundle(builder.build(
+        .insert(builder.build(
             DrawMode::Outlined {
                 fill_mode: FillMode::color(Color::NONE),
                 outline_mode: StrokeMode::new(Color::rgb_u8(168, 231, 242), 3.),
@@ -54,7 +54,7 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
         .id();
 
     let icon = commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             texture: asset_server.load("eth_icon.png"),
             transform: Transform {
                 scale: Vec3::splat(0.5),
@@ -72,7 +72,7 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
     };
     let builder = GeometryBuilder::new().add(&inner_rect);
     let inner = commands
-        .spawn_bundle(builder.build(
+        .spawn(builder.build(
             DrawMode::Fill(FillMode::color(Color::rgb_u8(132, 132, 132))),
             Transform::from_xyz(3. / 2., -3. / 2., 0.),
         ))
@@ -83,6 +83,7 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
 
 ////////////////////////////////////// Components //////////////////////////////////////
 
+#[derive(Resource)]
 pub struct EthHandle(pub Handle<TextureAtlas>);
 
 #[derive(Component)]
@@ -135,6 +136,7 @@ pub struct EthHud;
 #[derive(Component)]
 pub struct EthGauge;
 
+#[derive(Resource, Deref)]
 pub struct EthPicked(pub Instant);
 
 /////////////////////////////////////// Systems ////////////////////////////////////////
@@ -148,7 +150,7 @@ pub fn make_eth(
 ) {
     let eth_count = eth_q.iter().count();
 
-    if eth_count == 0 && picked_eth_at.0.elapsed() > Duration::from_secs(3) {
+    if eth_count == 0 && picked_eth_at.elapsed() > Duration::from_secs(3) {
         let player_x = player_q.single().translation.x;
 
         let (a, b) = if player_x < -0.3 * (GLOBAL_WIDTH / 2.) {
@@ -196,16 +198,14 @@ pub fn player_collects_eth(
 pub fn decay_player_eth(
     time: Res<Time>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
-    mut player_q: Query<(Entity, &mut EthOwned, &mut UnitCondition), With<Player>>,
+    mut player_q: Query<(Entity, &mut EthOwned, &UnitCondition), With<Player>>,
 ) {
-    let (player, mut player_eth, mut player_condition) = player_q.single_mut();
+    let (player, mut player_eth, player_condition) = player_q.single_mut();
 
     if let UnitCondition::Upgraded = &*player_condition {
         player_eth.remove(2. * time.delta_seconds());
         if player_eth.is_empty() {
-            let new_condition = UnitCondition::Normal;
-            *player_condition = new_condition;
-            ev_unit_changed.send(UnitChanged::entity(player).new_condition(new_condition));
+            ev_unit_changed.send(UnitChanged::entity(player).new_condition(UnitCondition::Normal));
         }
     }
 }

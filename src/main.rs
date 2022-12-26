@@ -23,7 +23,6 @@ mod prelude {
     pub use bevy::prelude::*;
     pub use bevy::render::camera::OrthographicProjection;
     pub use bevy::render::camera::ScalingMode;
-    pub use bevy::render::texture::ImageSettings;
     pub use bevy::text::Text2dSize;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
     pub use bevy_mod_aseprite::{
@@ -58,43 +57,47 @@ use crate::prelude::*;
 
 fn main() {
     App::new()
-        // Core resources
-        .insert_resource(WindowDescriptor {
-            title: "Angry Apes".to_string(),
-            width: GLOBAL_WIDTH,
-            height: GLOBAL_HEIGHT,
-            ..default()
-        })
-        .insert_resource(ImageSettings::default_nearest())
         // Setup plugins
-        .add_plugins_with(DefaultPlugins, |group| {
-            group.add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin)
-        })
+        .add_plugins(
+            DefaultPlugins
+                .set(WindowPlugin {
+                    window: WindowDescriptor {
+                        title: "Angry Apes".to_string(),
+                        width: GLOBAL_WIDTH,
+                        height: GLOBAL_HEIGHT,
+                        ..default()
+                    },
+                    ..default()
+                })
+                .set(ImagePlugin::default_nearest())
+                .build()
+                .add_before::<AssetPlugin, _>(EmbeddedAssetPlugin),
+        )
         .add_plugin(ShapePlugin)
         .add_plugin(AsepritePlugin)
         // Initialize game
         .add_startup_system(setup)
         .add_state(AppState::InGame)
-        // Process inputs at the very beginning
-        .add_stage_after(CoreStage::PreUpdate, "inputs", SystemStage::parallel())
-        .add_system_set_to_stage("inputs", State::<AppState>::get_driver())
-        .add_system_set_to_stage(
-            "inputs",
-            SystemSet::on_update(AppState::InGame)
-                .with_system(gamepad_connection_events.before("input"))
-                .with_system(handle_input.label("input"))
-                .with_system(update_units.after("input"))
-                .with_system(transition_units.after("input"))
-                .with_system(reorient_units_on_sprite_change.after("input")),
-        )
+        .init_resource::<AsepriteHandles>()
+        .init_resource::<Events<UnitChanged>>()
+        .init_resource::<Events<UnitAttack>>()
+        .init_resource::<InputKind>()
+        .init_resource::<Score>()
+        // Game related systems
         .add_system_set(
             SystemSet::on_update(AppState::InGame)
+                // Input related systems
+                .with_system(gamepad_connection_events.before(handle_input))
+                .with_system(handle_input)
                 // Player related systems
                 .with_system(move_units)
                 .with_system(fall_units)
-                .with_system(unit_attacks_ape)
                 .with_system(tick_dashes)
                 .with_system(cooldown_dashes)
+                .with_system(transition_units)
+                .with_system(unit_attacks_ape)
+                .with_system(reorient_units_on_sprite_change)
+                .with_system(update_units.at_end())
                 // Eth related systems
                 .with_system(make_eth)
                 .with_system(animate_eth)
@@ -106,29 +109,14 @@ fn main() {
                 .with_system(move_apes)
                 .with_system(trigger_ape_attack)
                 .with_system(ape_attacks_player_collision)
-                .with_system(animate_apes_attacks)
                 .with_system(animate_apes_wounds)
+                .with_system(animate_apes_attacks)
                 .with_system(display_dead_apes_hud),
         )
         // Gameover related systems
-        .add_system_set_to_stage(
-            "inputs",
-            SystemSet::on_enter(AppState::GameOver).with_system(despawn_game_state),
-        )
-        .add_system_set_to_stage(
-            "inputs",
-            SystemSet::on_update(AppState::GameOver).with_system(gameover_screen),
-        )
-        .add_system_set_to_stage(
-            "inputs",
-            SystemSet::on_exit(AppState::GameOver).with_system(respawn_game_state),
-        )
-        // Game logic resources
-        .init_resource::<AsepriteHandles>()
-        .init_resource::<Events<UnitChanged>>()
-        .init_resource::<Events<UnitAttack>>()
-        .init_resource::<InputKind>()
-        .init_resource::<Score>()
+        .add_system_set(SystemSet::on_enter(AppState::GameOver).with_system(despawn_game_state))
+        .add_system_set(SystemSet::on_update(AppState::GameOver).with_system(gameover_screen))
+        .add_system_set(SystemSet::on_exit(AppState::GameOver).with_system(respawn_game_state))
         .run();
 }
 

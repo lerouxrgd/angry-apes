@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 bevy = "0.9"
 bevy_embedded_assets = "0.6"
-bevy_mod_aseprite = "0.2"
+bevy_mod_aseprite = "0.3"
 bevy_prototype_lyon = "0.7"
 lyon_tessellation = "1"
 rand = "0.8"

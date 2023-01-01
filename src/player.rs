@@ -2,16 +2,26 @@ use crate::prelude::*;
 
 /////////////////////////////////////// Spawners ///////////////////////////////////////
 
-pub fn spawn_player(commands: &mut Commands, asset_server: &AssetServer) {
+pub fn spawn_player(
+    commands: &mut Commands,
+    aseprite_handles: &AsepriteHandles,
+    aseprites: &Assets<Aseprite>,
+) {
+    let aseprite_handle = aseprite_handles.get(sprites::Paladin::PATH).unwrap();
+    let aseprite = aseprites.get(aseprite_handle).unwrap();
+    let animation = AsepriteAnimation::new(aseprite.info(), sprites::Paladin::tags::STAND);
+
     commands
         .spawn(Player)
         .insert(UnitKind::Player)
         .insert(VisibilityBundle::default())
-        .insert(Gravity { vy: 0. })
+        .insert(Gravity::default())
         .insert(DashCooldown::default())
         .insert(AsepriteBundle {
-            aseprite: asset_server.load(sprites::Paladin::PATH),
-            animation: AsepriteAnimation::from(sprites::Paladin::tags::STAND),
+            texture_atlas: aseprite.atlas().clone(),
+            sprite: TextureAtlasSprite::new(animation.current_frame()),
+            aseprite: aseprite_handle.clone(),
+            animation,
             ..default()
         })
         .insert(TransformBundle::from_transform(Transform {
@@ -103,9 +113,11 @@ impl UnitKind {
     ) -> Handle<Aseprite> {
         use UnitCondition as Cond;
         match (self, unit_condition) {
-            (Self::Player, Cond::Normal) => aseprite_handles.get_handle(sprites::Paladin::PATH),
-            (Self::Player, Cond::Upgraded) => aseprite_handles.get_handle(sprites::Crusader::PATH),
+            (Self::Player, Cond::Normal) => aseprite_handles.get(sprites::Paladin::PATH),
+            (Self::Player, Cond::Upgraded) => aseprite_handles.get(sprites::Crusader::PATH),
         }
+        .unwrap()
+        .clone()
     }
 }
 
@@ -170,7 +182,7 @@ impl UnitCondition {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Gravity {
     pub vy: f32,
 }
@@ -210,12 +222,14 @@ pub fn update_units(
         &UnitKind,
         &mut UnitCondition,
         &mut UnitState,
+        &mut Handle<TextureAtlas>,
         &mut TextureAtlasSprite,
         &mut Handle<Aseprite>,
         &mut AsepriteAnimation,
         &mut Orientation,
     )>,
     aseprite_handles: Res<AsepriteHandles>,
+    aseprites: Res<Assets<Aseprite>>,
 ) {
     for &UnitChanged {
         unit,
@@ -228,8 +242,9 @@ pub fn update_units(
             unit_kind,
             mut unit_condition,
             mut unit_state,
-            mut sprite_atlas,
-            mut sprite_handle,
+            mut atlas,
+            mut sprite,
+            mut aseprite_h,
             mut animation,
             mut orientation,
 
@@ -238,7 +253,12 @@ pub fn update_units(
         };
 
         if let Some(new_state) = new_state {
-            *animation = AsepriteAnimation::from(unit_kind.anim_tag(new_state, *unit_condition));
+            let new_aseprite_h = unit_kind.asperite_handle(&aseprite_handles, *unit_condition);
+            let new_aseprite = aseprites.get(&new_aseprite_h).unwrap();
+            *animation = AsepriteAnimation::new(
+                new_aseprite.info(),
+                unit_kind.anim_tag(new_state, *unit_condition),
+            );
 
             match new_state {
                 UnitState::Stand
@@ -270,16 +290,22 @@ pub fn update_units(
         }
 
         if let Some(new_condition) = new_condition {
-            *sprite_handle = unit_kind.asperite_handle(&aseprite_handles, new_condition);
-            *animation = AsepriteAnimation::from(unit_kind.anim_tag(*unit_state, new_condition));
-            // TODO: consider some kind of animation.set_tag_frame()
-            commands.entity(unit).remove::<TextureAtlasSprite>();
+            let new_aseprite_h = unit_kind.asperite_handle(&aseprite_handles, new_condition);
+            let new_aseprite = aseprites.get(&new_aseprite_h).unwrap();
+            let new_animation = AsepriteAnimation::new(
+                new_aseprite.info(),
+                unit_kind.anim_tag(*unit_state, new_condition),
+            );
+
+            *atlas = new_aseprite.atlas().clone();
+            *aseprite_h = new_aseprite_h.clone();
+            *animation = new_animation;
 
             *unit_condition = new_condition;
         }
 
         if let Some(new_orientation) = new_orientation {
-            sprite_atlas.flip_x = new_orientation.flip_x();
+            sprite.flip_x = new_orientation.flip_x();
             *orientation = new_orientation;
         }
     }
@@ -315,8 +341,8 @@ pub fn transition_units(
         let Some(aseprite) = aseprites.get(handle) else { continue };
         match unit_state {
             UnitState::Attack => {
-                let remaining_frames = anim.remaining_tag_frames(aseprite.info());
-                let frame_finished = anim.frame_finished(aseprite.info(), time.delta());
+                let remaining_frames = anim.remaining_tag_frames(aseprite.info()).unwrap();
+                let frame_finished = anim.frame_finished(time.delta());
                 if remaining_frames == 1 && frame_finished {
                     ev_unit_attack.send(UnitAttack(unit));
                 }
@@ -333,16 +359,16 @@ pub fn transition_units(
             },
 
             UnitState::Wound => {
-                let remaining_frames = anim.remaining_tag_frames(aseprite.info());
-                let frame_finished = anim.frame_finished(aseprite.info(), time.delta());
+                let remaining_frames = anim.remaining_tag_frames(aseprite.info()).unwrap();
+                let frame_finished = anim.frame_finished(time.delta());
                 if remaining_frames == 0 && frame_finished {
                     ev_unit_changed.send(UnitChanged::entity(unit).new_state(UnitState::Stand));
                 }
             }
 
             UnitState::Die if is_player.is_some() => {
-                let remaining_frames = anim.remaining_tag_frames(aseprite.info());
-                let frame_finished = anim.frame_finished(aseprite.info(), time.delta());
+                let remaining_frames = anim.remaining_tag_frames(aseprite.info()).unwrap();
+                let frame_finished = anim.frame_finished(time.delta());
                 if remaining_frames == 0 && frame_finished {
                     app_state.set(AppState::GameOver).ok();
                 }

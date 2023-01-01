@@ -7,11 +7,13 @@ pub fn spawn_game_state(
     asset_server: &AssetServer,
     texture_atlases: &mut Assets<TextureAtlas>,
     font_handle: &Handle<Font>,
+    aseprite_handles: &AsepriteHandles,
+    aseprites: &Assets<Aseprite>,
 ) {
     spawn_background(commands, asset_server);
     spawn_platform(commands, asset_server);
 
-    spawn_player(commands, asset_server);
+    spawn_player(commands, aseprite_handles, aseprites);
     spawn_life_hud(commands, asset_server);
 
     spawn_eth_hud(commands, asset_server);
@@ -157,32 +159,11 @@ pub fn spawn_gameover_screen(
 #[derive(Resource, Debug, Default, Deref, DerefMut)]
 pub struct AsepriteHandles(HashMap<&'static str, Handle<Aseprite>>);
 
-impl AsepriteHandles {
-    pub fn init(&mut self, commands: &mut Commands, asset_server: &AssetServer) {
-        for asprite_path in [sprites::Paladin::PATH, sprites::Crusader::PATH] {
-            let aseprite = asset_server.load(asprite_path);
-            self.insert(asprite_path, aseprite.clone());
-            let id = commands
-                .spawn(AsepriteBundle {
-                    aseprite,
-                    ..default()
-                })
-                .id();
-            commands.entity(id).despawn();
-        }
-    }
-
-    pub fn get_handle(&self, aseprite_path: &'static str) -> Handle<Aseprite> {
-        self.get(aseprite_path)
-            .map(Clone::clone)
-            .unwrap_or_default()
-    }
-}
-
 ////////////////////////////////////// Components //////////////////////////////////////
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
+    Loading,
     InGame,
     GameOver,
 }
@@ -285,6 +266,8 @@ pub fn respawn_game_state(
     mut commands: Commands,
     font_handle: Res<FontHandle>,
     asset_server: Res<AssetServer>,
+    aseprite_handles: Res<AsepriteHandles>,
+    aseprites: Res<Assets<Aseprite>>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut text_q: Query<&mut Visibility, With<GameoverElement>>,
     mut score: ResMut<Score>,
@@ -300,6 +283,8 @@ pub fn respawn_game_state(
         &asset_server,
         &mut texture_atlases,
         &font_handle,
+        &aseprite_handles,
+        &aseprites,
     );
 }
 

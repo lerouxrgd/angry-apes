@@ -17,6 +17,7 @@ mod prelude {
     #[allow(unused_imports)]
     use bevy_dylib;
 
+    pub use bevy::asset::LoadState;
     pub use bevy::ecs::event::Events;
     pub use bevy::input::gamepad::{Gamepad, GamepadAxisType, GamepadButton};
     pub use bevy::input::keyboard::KeyboardInput;
@@ -26,7 +27,7 @@ mod prelude {
     pub use bevy::text::Text2dSize;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
     pub use bevy_mod_aseprite::{
-        Aseprite, AsepriteAnimation, AsepriteBundle, AsepritePlugin, AsepriteTag,
+        Aseprite, AsepriteAnimation, AsepriteBundle, AsepritePlugin, AsepriteSystems, AsepriteTag,
     };
     pub use bevy_prototype_lyon::prelude::{
         DrawMode, FillMode, Geometry, GeometryBuilder, Path as TessPath, ShapePlugin, StrokeMode,
@@ -76,14 +77,16 @@ fn main() {
         .add_plugin(ShapePlugin)
         .add_plugin(AsepritePlugin)
         // Initialize game
-        .add_startup_system(setup)
-        .add_state(AppState::InGame)
         .init_resource::<AsepriteHandles>()
         .init_resource::<Events<UnitChanged>>()
         .init_resource::<Events<UnitAttack>>()
         .init_resource::<InputKind>()
         .init_resource::<Score>()
+        .add_state(AppState::Loading)
         // Game related systems
+        .add_system_set(SystemSet::on_enter(AppState::Loading).with_system(load_assets))
+        .add_system_set(SystemSet::on_update(AppState::Loading).with_system(check_assets))
+        .add_system_set(SystemSet::on_exit(AppState::Loading).with_system(setup))
         .add_system_set(
             SystemSet::on_update(AppState::InGame)
                 // Input related systems
@@ -94,8 +97,8 @@ fn main() {
                 .with_system(fall_units)
                 .with_system(tick_dashes)
                 .with_system(cooldown_dashes)
-                .with_system(transition_units)
-                .with_system(unit_attacks_ape)
+                .with_system(transition_units.before(AsepriteSystems::Animate))
+                .with_system(unit_attacks_ape.after(transition_units))
                 .with_system(reorient_units_on_sprite_change)
                 .with_system(update_units.at_end())
                 // Eth related systems
@@ -120,13 +123,32 @@ fn main() {
         .run();
 }
 
+fn load_assets(mut aseprite_handles: ResMut<AsepriteHandles>, asset_server: Res<AssetServer>) {
+    for asprite_path in [sprites::Paladin::PATH, sprites::Crusader::PATH] {
+        let aseprite = asset_server.load(asprite_path);
+        aseprite_handles.insert(asprite_path, aseprite);
+    }
+}
+
+fn check_assets(
+    aseprite_handles: ResMut<AsepriteHandles>,
+    asset_server: Res<AssetServer>,
+    mut state: ResMut<State<AppState>>,
+) {
+    if let LoadState::Loaded =
+        asset_server.get_group_load_state(aseprite_handles.iter().map(|(_, handle)| handle.id()))
+    {
+        state.set(AppState::InGame).unwrap();
+    }
+}
+
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    mut aseprite_handles: ResMut<AsepriteHandles>,
+    aseprite_handles: Res<AsepriteHandles>,
+    aseprites: Res<Assets<Aseprite>>,
 ) {
-    aseprite_handles.init(&mut commands, &asset_server);
     init_eth(&mut commands, &asset_server, &mut texture_atlases);
 
     let font_handle = spawn_font(&mut commands, &asset_server);
@@ -140,5 +162,7 @@ fn setup(
         &asset_server,
         &mut texture_atlases,
         &font_handle,
+        &aseprite_handles,
+        &aseprites,
     );
 }

@@ -290,7 +290,7 @@ pub fn respawn_game_state(
 
 pub fn gameover_screen(
     input_kind: Res<InputKind>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<Input<ScanCode>>,
     gamepads: Res<Gamepads>,
     buttons: Res<Input<GamepadButton>>,
     score: Res<Score>,
@@ -310,7 +310,7 @@ pub fn gameover_screen(
 
     match &*input_kind {
         InputKind::Keyboard => {
-            if keys.just_released(KeyCode::Key1) {
+            if keys.just_released(PlayerInput::ATTACK) {
                 app_state.set(AppState::InGame).unwrap();
             }
         }

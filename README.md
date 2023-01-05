@@ -16,12 +16,12 @@ so you'll find out that collecting enough ETH helps you quite a lot !
 
 Here are the controls of the game:
 
-|           | Keyboard        | Gamepad       |
-|-----------|-----------------|---------------|
-| Attack    | Enter or Key1   | West          |
-| Dash      | RControl or TAB | East          |
-| Jump      | Space           | South         |
-| Movements | Arrows          | Stick or DPad |
+|           | Keyboard | Gamepad       |
+|-----------|----------|---------------|
+| Attack    | Enter    | West          |
+| Dash      | RShift   | East          |
+| Jump      | Space    | South         |
+| Movements | WASD     | Stick or DPad |
 
 Try to survive and kill as many Apes as you can !
 

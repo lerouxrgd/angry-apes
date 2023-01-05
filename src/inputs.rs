@@ -37,19 +37,19 @@ impl Movements {
         }
     }
 
-    pub fn from_keyboard(keys: &Input<KeyCode>) -> Self {
+    pub fn from_keyboard(keys: &Input<ScanCode>) -> Self {
         let mut movements = HashSet::with_capacity(4);
 
-        if keys.pressed(KeyCode::Left) {
+        if keys.pressed(PlayerInput::LEFT) {
             movements.insert(Moving::Left);
         }
-        if keys.pressed(KeyCode::Up) {
+        if keys.pressed(PlayerInput::UP) {
             movements.insert(Moving::Up);
         }
-        if keys.pressed(KeyCode::Down) {
+        if keys.pressed(PlayerInput::DOWN) {
             movements.insert(Moving::Down);
         }
-        if keys.pressed(KeyCode::Right) {
+        if keys.pressed(PlayerInput::RIGHT) {
             movements.insert(Moving::Right);
         }
 
@@ -152,14 +152,14 @@ impl Orientation {
         }
     }
 
-    pub fn from_keyboard(keys: &Input<KeyCode>) -> Option<Self> {
-        if keys.just_pressed(KeyCode::Left) && !keys.pressed(KeyCode::Right) {
+    pub fn from_keyboard(keys: &Input<ScanCode>) -> Option<Self> {
+        if keys.just_pressed(PlayerInput::LEFT) && !keys.pressed(PlayerInput::RIGHT) {
             Some(Self::Left)
-        } else if keys.just_pressed(KeyCode::Right) && !keys.pressed(KeyCode::Left) {
+        } else if keys.just_pressed(PlayerInput::RIGHT) && !keys.pressed(PlayerInput::LEFT) {
             Some(Self::Right)
-        } else if keys.pressed(KeyCode::Left) && keys.just_released(KeyCode::Right) {
+        } else if keys.pressed(PlayerInput::LEFT) && keys.just_released(PlayerInput::RIGHT) {
             Some(Self::Left)
-        } else if keys.pressed(KeyCode::Right) && keys.just_released(KeyCode::Left) {
+        } else if keys.pressed(PlayerInput::RIGHT) && keys.just_released(PlayerInput::LEFT) {
             Some(Self::Right)
         } else {
             None
@@ -221,9 +221,8 @@ impl Orientation {
 /////////////////////////////////////// Systems ////////////////////////////////////////
 
 pub enum PlayerInput<'a> {
-    // TODO: Use ScanCode WASD instead
     Keyboard {
-        keys: &'a Input<KeyCode>,
+        keys: &'a Input<ScanCode>,
     },
     Gamepad {
         gamepad: Gamepad,
@@ -233,9 +232,18 @@ pub enum PlayerInput<'a> {
 }
 
 impl<'a> PlayerInput<'a> {
+    // https://kbdlayout.info/kbdusx/scancodes
+    pub const UP: ScanCode = ScanCode(0x11); // KeyCode::W
+    pub const LEFT: ScanCode = ScanCode(0x1E); // KeyCode::A
+    pub const DOWN: ScanCode = ScanCode(0x1F); // KeyCode::S
+    pub const RIGHT: ScanCode = ScanCode(0x20); // KeyCode::D
+    pub const JUMP: ScanCode = ScanCode(0x39); // KeyCode::Space
+    pub const DASH: ScanCode = ScanCode(0x36); // KeyCode::RShift
+    pub const ATTACK: ScanCode = ScanCode(0x1C); // KeyCode::Return
+
     pub fn jump_detected(&self) -> bool {
         match self {
-            Self::Keyboard { keys } => keys.just_pressed(KeyCode::Space),
+            Self::Keyboard { keys } => keys.just_pressed(Self::JUMP),
             Self::Gamepad {
                 gamepad, buttons, ..
             } => buttons.just_pressed(GamepadButton {
@@ -247,9 +255,7 @@ impl<'a> PlayerInput<'a> {
 
     pub fn dash_detected(&self) -> bool {
         match &self {
-            Self::Keyboard { keys } => {
-                keys.just_pressed(KeyCode::RControl) || keys.just_pressed(KeyCode::Tab)
-            }
+            Self::Keyboard { keys } => keys.just_pressed(Self::DASH),
             Self::Gamepad {
                 gamepad, buttons, ..
             } => buttons.just_pressed(GamepadButton {
@@ -261,9 +267,7 @@ impl<'a> PlayerInput<'a> {
 
     pub fn attack_detected(&self) -> bool {
         match self {
-            Self::Keyboard { keys } => {
-                keys.just_pressed(KeyCode::Return) || keys.just_pressed(KeyCode::Key1)
-            }
+            Self::Keyboard { keys } => keys.just_pressed(Self::ATTACK),
             Self::Gamepad {
                 gamepad, buttons, ..
             } => {
@@ -281,10 +285,10 @@ impl<'a> PlayerInput<'a> {
     pub fn direction_pressed(&self) -> bool {
         match self {
             Self::Keyboard { keys } => {
-                keys.pressed(KeyCode::Left)
-                    || keys.pressed(KeyCode::Up)
-                    || keys.pressed(KeyCode::Down)
-                    || keys.pressed(KeyCode::Right)
+                keys.pressed(Self::LEFT)
+                    || keys.pressed(Self::UP)
+                    || keys.pressed(Self::DOWN)
+                    || keys.pressed(Self::RIGHT)
             }
             Self::Gamepad {
                 gamepad,
@@ -321,10 +325,10 @@ impl<'a> PlayerInput<'a> {
     pub fn direction_just_released(&self) -> bool {
         match self {
             Self::Keyboard { keys } => {
-                keys.just_released(KeyCode::Left)
-                    || keys.just_released(KeyCode::Up)
-                    || keys.just_released(KeyCode::Down)
-                    || keys.just_released(KeyCode::Right)
+                keys.just_released(Self::LEFT)
+                    || keys.just_released(Self::UP)
+                    || keys.just_released(Self::DOWN)
+                    || keys.just_released(Self::RIGHT)
             }
             Self::Gamepad {
                 gamepad,
@@ -361,7 +365,7 @@ impl<'a> PlayerInput<'a> {
 
 pub fn handle_input(
     input_kind: Res<InputKind>,
-    keys: Res<Input<KeyCode>>,
+    keys: Res<Input<ScanCode>>,
     buttons: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     mut commands: Commands,

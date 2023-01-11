@@ -37,7 +37,7 @@ impl Movements {
         }
     }
 
-    pub fn from_keyboard(keys: &Input<ScanCode>) -> Self {
+    pub fn from_keyboard(keys: &Input<KeyCode>) -> Self {
         let mut movements = HashSet::with_capacity(4);
 
         if keys.pressed(PlayerInput::LEFT) {
@@ -152,7 +152,7 @@ impl Orientation {
         }
     }
 
-    pub fn from_keyboard(keys: &Input<ScanCode>) -> Option<Self> {
+    pub fn from_keyboard(keys: &Input<KeyCode>) -> Option<Self> {
         if keys.just_pressed(PlayerInput::LEFT) && !keys.pressed(PlayerInput::RIGHT) {
             Some(Self::Left)
         } else if keys.just_pressed(PlayerInput::RIGHT) && !keys.pressed(PlayerInput::LEFT) {
@@ -222,7 +222,7 @@ impl Orientation {
 
 pub enum PlayerInput<'a> {
     Keyboard {
-        keys: &'a Input<ScanCode>,
+        keys: &'a Input<KeyCode>,
     },
     Gamepad {
         gamepad: Gamepad,
@@ -232,14 +232,13 @@ pub enum PlayerInput<'a> {
 }
 
 impl<'a> PlayerInput<'a> {
-    // https://kbdlayout.info/kbdusx/scancodes
-    pub const UP: ScanCode = ScanCode(0x11); // KeyCode::W
-    pub const LEFT: ScanCode = ScanCode(0x1E); // KeyCode::A
-    pub const DOWN: ScanCode = ScanCode(0x1F); // KeyCode::S
-    pub const RIGHT: ScanCode = ScanCode(0x20); // KeyCode::D
-    pub const JUMP: ScanCode = ScanCode(0x39); // KeyCode::Space
-    pub const DASH: ScanCode = ScanCode(0x36); // KeyCode::RShift
-    pub const ATTACK: ScanCode = ScanCode(0x1C); // KeyCode::Return
+    pub const UP: KeyCode = KeyCode::Up;
+    pub const LEFT: KeyCode = KeyCode::Left;
+    pub const DOWN: KeyCode = KeyCode::Down;
+    pub const RIGHT: KeyCode = KeyCode::Right;
+    pub const JUMP: KeyCode = KeyCode::Space;
+    pub const DASH: KeyCode = KeyCode::Tab;
+    pub const ATTACK: KeyCode = KeyCode::Key1;
 
     pub fn jump_detected(&self) -> bool {
         match self {
@@ -365,7 +364,7 @@ impl<'a> PlayerInput<'a> {
 
 pub fn handle_input(
     input_kind: Res<InputKind>,
-    keys: Res<Input<ScanCode>>,
+    keys: Res<Input<KeyCode>>,
     buttons: Res<Input<GamepadButton>>,
     axes: Res<Axis<GamepadAxis>>,
     mut commands: Commands,

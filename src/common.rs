@@ -290,7 +290,7 @@ pub fn respawn_game_state(
 
 pub fn gameover_screen(
     input_kind: Res<InputKind>,
-    keys: Res<Input<ScanCode>>,
+    keys: Res<Input<KeyCode>>,
     gamepads: Res<Gamepads>,
     buttons: Res<Input<GamepadButton>>,
     score: Res<Score>,

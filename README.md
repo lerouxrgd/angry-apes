@@ -18,10 +18,10 @@ Here are the controls of the game:
 
 |           | Keyboard | Gamepad       |
 |-----------|----------|---------------|
-| Attack    | Enter    | West          |
-| Dash      | RShift   | East          |
+| Attack    | Key1     | West          |
+| Dash      | TAB      | East          |
 | Jump      | Space    | South         |
-| Movements | WASD     | Stick or DPad |
+| Movements | Arrows   | Stick or DPad |
 
 Try to survive and kill as many Apes as you can !
 

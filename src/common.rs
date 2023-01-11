@@ -50,8 +50,10 @@ pub fn spawn_camera(commands: &mut Commands) {
         ..default()
     };
 
-    let mut camera = Camera2dBundle::default();
-    camera.projection = projection;
+    let camera = Camera2dBundle {
+        projection,
+        ..default()
+    };
 
     commands.spawn(camera);
 }

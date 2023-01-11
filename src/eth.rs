@@ -202,7 +202,7 @@ pub fn decay_player_eth(
 ) {
     let (player, mut player_eth, player_condition) = player_q.single_mut();
 
-    if let UnitCondition::Upgraded = &*player_condition {
+    if let UnitCondition::Upgraded = player_condition {
         player_eth.remove(2. * time.delta_seconds());
         if player_eth.is_empty() {
             ev_unit_changed.send(UnitChanged::entity(player).new_condition(UnitCondition::Normal));

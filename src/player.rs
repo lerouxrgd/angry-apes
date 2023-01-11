@@ -395,12 +395,7 @@ pub fn move_units(time: Res<Time>, mut units_q: Query<(&UnitState, &mut Transfor
             }
 
             let wall = 540.;
-            if transform.translation.x < -wall {
-                transform.translation.x = -wall;
-            }
-            if transform.translation.x > wall {
-                transform.translation.x = wall;
-            }
+            transform.translation.x = transform.translation.x.clamp(-wall, wall);
         }
     }
 }

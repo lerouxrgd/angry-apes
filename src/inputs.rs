@@ -187,14 +187,10 @@ impl Orientation {
             })
             .unwrap();
 
-        if left_stick_x > 0.01 {
+        if left_stick_x > 0.01 || dpad_right {
             Some(Self::Right)
-        } else if left_stick_x < -0.01 {
+        } else if left_stick_x < -0.01 || dpad_left {
             Some(Self::Left)
-        } else if dpad_left {
-            Some(Self::Left)
-        } else if dpad_right {
-            Some(Self::Right)
         } else {
             None
         }

@@ -18,14 +18,14 @@ pub fn spawn_ape(
         .choose(&mut rand::thread_rng())
         .unwrap();
 
-    let ape_wound_image = asset_server.load(&format!("{ape_name}_wound.png"));
+    let ape_wound_image = asset_server.load(format!("{ape_name}_wound.png"));
     let ape_wound_atlas =
         TextureAtlas::from_grid(ape_wound_image, Vec2::new(600., 600.), 3, 1, None, None);
 
     let ape = commands
         .spawn(Ape)
         .insert(SpriteBundle {
-            texture: asset_server.load(&format!("{ape_name}.png")),
+            texture: asset_server.load(format!("{ape_name}.png")),
             transform: Transform {
                 scale: Vec3::splat(0.8),
                 translation: Vec3::new(flank.start_pos(), 0., 5.),
@@ -48,11 +48,11 @@ pub fn spawn_ape(
         .scaled_by(0.8)
         .with_offset(PROJECTION_SCALE / 2.);
 
-    let laser_init_image = asset_server.load(&format!("{ape_name}_blinking_eyes.png"));
+    let laser_init_image = asset_server.load(format!("{ape_name}_blinking_eyes.png"));
     let laser_init_atlas =
         TextureAtlas::from_grid(laser_init_image, Vec2::new(900.0, 600.0), 2, 1, None, None);
 
-    let laser_on_image = asset_server.load(&format!("{ape_name}_lasers.png"));
+    let laser_on_image = asset_server.load(format!("{ape_name}_lasers.png"));
     let laser_on_atlas =
         TextureAtlas::from_grid(laser_on_image, Vec2::new(900.0, 600.0), 3, 1, None, None);
 
@@ -462,18 +462,16 @@ pub fn ape_attacks_player_collision(
             }
         };
 
-        if player_in_range {
-            if !matches!(player_state, UnitState::Wound | UnitState::Die) {
-                let mut health_chunks = health_q.single_mut();
-                if let Some(chunk) = health_chunks.pop() {
-                    commands.entity(chunk).despawn();
-                }
+        if player_in_range && !matches!(player_state, UnitState::Wound | UnitState::Die) {
+            let mut health_chunks = health_q.single_mut();
+            if let Some(chunk) = health_chunks.pop() {
+                commands.entity(chunk).despawn();
+            }
 
-                if health_chunks.is_empty() {
-                    ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Die));
-                } else {
-                    ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Wound));
-                }
+            if health_chunks.is_empty() {
+                ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Die));
+            } else {
+                ev_unit_changed.send(UnitChanged::entity(player).new_state(UnitState::Wound));
             }
         }
     }
@@ -555,14 +553,12 @@ pub fn animate_apes_wounds(
                     sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
                 }
                 // Animation is finished
-                else {
-                    if life.current == 0. {
-                        dead_counter.single_mut().0 += 1;
-                        score.0 += 1;
-                        commands.entity(ape.get()).despawn_recursive();
-                    } else {
-                        commands.entity(anim_id).despawn_recursive();
-                    }
+                else if life.current == 0. {
+                    dead_counter.single_mut().0 += 1;
+                    score.0 += 1;
+                    commands.entity(ape.get()).despawn_recursive();
+                } else {
+                    commands.entity(anim_id).despawn_recursive();
                 }
             }
             None => unreachable!(),

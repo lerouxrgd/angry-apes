@@ -1,3 +1,7 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::single_component_path_imports)]
+
 mod ape;
 mod common;
 mod eth;

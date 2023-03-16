@@ -23,18 +23,21 @@ mod prelude {
 
     pub use bevy::asset::LoadState;
     pub use bevy::ecs::event::Events;
-    pub use bevy::input::gamepad::{Gamepad, GamepadAxisType, GamepadButton};
+    pub use bevy::input::gamepad::{
+        Gamepad, GamepadAxisType, GamepadButton, GamepadConnection, GamepadConnectionEvent,
+        GamepadEvent,
+    };
     pub use bevy::input::keyboard::KeyboardInput;
     pub use bevy::prelude::*;
     pub use bevy::render::camera::OrthographicProjection;
     pub use bevy::render::camera::ScalingMode;
-    pub use bevy::text::Text2dSize;
+    pub use bevy::text::TextLayoutInfo;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
     pub use bevy_mod_aseprite::{
         Aseprite, AsepriteAnimation, AsepriteBundle, AsepritePlugin, AsepriteSystems, AsepriteTag,
     };
     pub use bevy_prototype_lyon::prelude::{
-        DrawMode, FillMode, Geometry, GeometryBuilder, Path as TessPath, ShapePlugin, StrokeMode,
+        Fill, Geometry, GeometryBuilder, Path as TessPath, ShapeBundle, ShapePlugin, Stroke,
     };
     pub use bevy_prototype_lyon::shapes;
     pub use lyon_tessellation as tess;
@@ -58,6 +61,8 @@ mod prelude {
     pub const PROJECTION_SCALE: f32 = 300.;
 }
 
+use bevy::window::WindowResolution;
+
 use crate::prelude::*;
 
 fn main() {
@@ -66,12 +71,11 @@ fn main() {
         .add_plugins(
             DefaultPlugins
                 .set(WindowPlugin {
-                    window: WindowDescriptor {
+                    primary_window: Some(Window {
                         title: "Angry Apes".to_string(),
-                        width: GLOBAL_WIDTH,
-                        height: GLOBAL_HEIGHT,
+                        resolution: WindowResolution::new(GLOBAL_WIDTH, GLOBAL_HEIGHT),
                         ..default()
-                    },
+                    }),
                     ..default()
                 })
                 .set(ImagePlugin::default_nearest())
@@ -86,44 +90,61 @@ fn main() {
         .init_resource::<Events<UnitAttack>>()
         .init_resource::<InputKind>()
         .init_resource::<Score>()
-        .add_state(AppState::Loading)
+        .add_state::<AppState>()
         // Game related systems
-        .add_system_set(SystemSet::on_enter(AppState::Loading).with_system(load_assets))
-        .add_system_set(SystemSet::on_update(AppState::Loading).with_system(check_assets))
-        .add_system_set(SystemSet::on_exit(AppState::Loading).with_system(setup))
-        .add_system_set(
-            SystemSet::on_update(AppState::InGame)
+        .add_system(load_assets.in_schedule(OnEnter(AppState::Loading)))
+        .add_system(check_assets.in_set(OnUpdate(AppState::Loading)))
+        .add_system(setup.in_schedule(OnExit(AppState::Loading)))
+        .add_systems(
+            (
                 // Input related systems
-                .with_system(gamepad_connection_events.before(handle_input))
-                .with_system(handle_input)
+                gamepad_connection_events.before(handle_input),
+                handle_input,
+            )
+                .in_set(OnUpdate(AppState::InGame)),
+        )
+        .add_systems(
+            (
                 // Player related systems
-                .with_system(move_units)
-                .with_system(fall_units)
-                .with_system(tick_dashes)
-                .with_system(cooldown_dashes)
-                .with_system(transition_units.before(AsepriteSystems::Animate))
-                .with_system(unit_attacks_ape.after(transition_units))
-                .with_system(reorient_units_on_sprite_change)
-                .with_system(update_units.at_end())
+                move_units,
+                fall_units,
+                tick_dashes,
+                cooldown_dashes,
+                transition_units.before(AsepriteSystems::Animate),
+                unit_attacks_ape.after(transition_units),
+                reorient_units_on_sprite_change,
+                update_units,
+            )
+                .in_set(OnUpdate(AppState::InGame)),
+        )
+        .add_systems(
+            (
                 // Eth related systems
-                .with_system(make_eth)
-                .with_system(animate_eth)
-                .with_system(player_collects_eth)
-                .with_system(player_eth_gauge)
-                .with_system(decay_player_eth)
+                make_eth,
+                animate_eth,
+                player_collects_eth,
+                player_eth_gauge,
+                decay_player_eth,
+            )
+                .in_set(OnUpdate(AppState::InGame)),
+        )
+        .add_systems(
+            (
                 // Ape related systems
-                .with_system(make_ape)
-                .with_system(move_apes)
-                .with_system(trigger_ape_attack)
-                .with_system(ape_attacks_player_collision)
-                .with_system(animate_apes_wounds)
-                .with_system(animate_apes_attacks)
-                .with_system(display_dead_apes_hud),
+                make_ape,
+                move_apes,
+                trigger_ape_attack,
+                ape_attacks_player_collision,
+                animate_apes_wounds,
+                animate_apes_attacks,
+                display_dead_apes_hud,
+            )
+                .in_set(OnUpdate(AppState::InGame)),
         )
         // Gameover related systems
-        .add_system_set(SystemSet::on_enter(AppState::GameOver).with_system(despawn_game_state))
-        .add_system_set(SystemSet::on_update(AppState::GameOver).with_system(gameover_screen))
-        .add_system_set(SystemSet::on_exit(AppState::GameOver).with_system(respawn_game_state))
+        .add_system(despawn_game_state.in_schedule(OnEnter(AppState::GameOver)))
+        .add_system(gameover_screen.in_set(OnUpdate(AppState::GameOver)))
+        .add_system(respawn_game_state.in_schedule(OnExit(AppState::GameOver)))
         .run();
 }
 
@@ -137,12 +158,12 @@ fn load_assets(mut aseprite_handles: ResMut<AsepriteHandles>, asset_server: Res<
 fn check_assets(
     aseprite_handles: ResMut<AsepriteHandles>,
     asset_server: Res<AssetServer>,
-    mut state: ResMut<State<AppState>>,
+    mut state: ResMut<NextState<AppState>>,
 ) {
     if let LoadState::Loaded =
         asset_server.get_group_load_state(aseprite_handles.iter().map(|(_, handle)| handle.id()))
     {
-        state.set(AppState::InGame).unwrap();
+        state.set(AppState::InGame);
     }
 }
 

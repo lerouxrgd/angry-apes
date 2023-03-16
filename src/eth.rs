@@ -44,12 +44,14 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
     let builder = GeometryBuilder::new().add(&outer_rect);
     let outer = commands
         .entity(eth_hud)
-        .insert(builder.build(
-            DrawMode::Outlined {
-                fill_mode: FillMode::color(Color::NONE),
-                outline_mode: StrokeMode::new(Color::rgb_u8(168, 231, 242), 3.),
+        .insert((
+            ShapeBundle {
+                path: builder.build(),
+                transform: Transform::from_xyz(-540., 280., 999.),
+                ..default()
             },
-            Transform::from_xyz(-540., 280., 999.),
+            Fill::color(Color::NONE),
+            Stroke::new(Color::rgb_u8(168, 231, 242), 3.),
         ))
         .id();
 
@@ -72,9 +74,13 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
     };
     let builder = GeometryBuilder::new().add(&inner_rect);
     let inner = commands
-        .spawn(builder.build(
-            DrawMode::Fill(FillMode::color(Color::rgb_u8(132, 132, 132))),
-            Transform::from_xyz(3. / 2., -3. / 2., 0.),
+        .spawn((
+            ShapeBundle {
+                path: builder.build(),
+                transform: Transform::from_xyz(3. / 2., -3. / 2., 0.),
+                ..default()
+            },
+            Fill::color(Color::rgb_u8(132, 132, 132)),
         ))
         .insert(EthGauge)
         .id();
@@ -212,7 +218,7 @@ pub fn decay_player_eth(
 
 pub fn player_eth_gauge(
     player_q: Query<(&EthOwned, &UnitCondition), With<Player>>,
-    mut gauge_q: Query<(&mut TessPath, &mut DrawMode), With<EthGauge>>,
+    mut gauge_q: Query<(&mut TessPath, &mut Fill), With<EthGauge>>,
 ) {
     let (player_eth, player_condition) = player_q.single();
 
@@ -228,8 +234,8 @@ pub fn player_eth_gauge(
 
     *gauge_path = TessPath(path_builder.build());
     *draw = match player_condition {
-        UnitCondition::Normal => DrawMode::Fill(FillMode::color(Color::rgb_u8(132, 132, 132))),
-        UnitCondition::Upgraded => DrawMode::Fill(FillMode::color(Color::rgb_u8(200, 160, 24))),
+        UnitCondition::Normal => Fill::color(Color::rgb_u8(132, 132, 132)),
+        UnitCondition::Upgraded => Fill::color(Color::rgb_u8(200, 160, 24)),
     }
 }
 

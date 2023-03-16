@@ -335,7 +335,7 @@ pub fn transition_units(
     aseprites: Res<Assets<Aseprite>>,
     mut ev_unit_changed: EventWriter<UnitChanged>,
     mut ev_unit_attack: EventWriter<UnitAttack>,
-    mut app_state: ResMut<State<AppState>>,
+    mut app_state: ResMut<NextState<AppState>>,
 ) {
     for (unit, &unit_state, is_player, dash, handle, anim) in &units_q {
         let Some(aseprite) = aseprites.get(handle) else { continue };
@@ -370,7 +370,7 @@ pub fn transition_units(
                 let remaining_frames = anim.remaining_tag_frames(aseprite.info()).unwrap();
                 let frame_finished = anim.frame_finished(time.delta());
                 if remaining_frames == 0 && frame_finished {
-                    app_state.set(AppState::GameOver).ok();
+                    app_state.set(AppState::GameOver);
                 }
             }
 

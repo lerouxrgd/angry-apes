@@ -1,20 +1,20 @@
 [package]
 name = "angry-apes"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-bevy = "0.9"
-bevy_embedded_assets = "0.6"
-bevy_mod_aseprite = "0.3"
-bevy_prototype_lyon = "0.7"
+bevy = "0.10"
+bevy_embedded_assets = "0.7"
+bevy_mod_aseprite = "0.4"
+bevy_prototype_lyon = "0.8"
 lyon_tessellation = "1"
 rand = "0.8"
 rand_distr = "0.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-bevy_dylib = "0.9"
+bevy_dylib = "0.10"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 instant = "0.1"

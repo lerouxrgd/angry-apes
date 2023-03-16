@@ -166,9 +166,13 @@ pub fn spawn_ape_damaged_anim(
         };
         let builder = GeometryBuilder::new().add(&rect);
         let healthbar = commands
-            .spawn(builder.build(
-                DrawMode::Fill(FillMode::color(Color::PINK)),
-                Transform::from_xyz(10., 300., 15.),
+            .spawn((
+                ShapeBundle {
+                    path: builder.build(),
+                    transform: Transform::from_xyz(10., 300., 15.),
+                    ..default()
+                },
+                Fill::color(Color::PINK),
             ))
             .id();
         commands.entity(anim).push_children(&[healthbar]);
@@ -218,11 +222,8 @@ pub fn spawn_dead_apes_hud(
                     color: Color::WHITE,
                 },
             )
-            .with_alignment(TextAlignment {
-                vertical: VerticalAlign::Center,
-                horizontal: HorizontalAlign::Left,
-            }),
-            transform: Transform::from_xyz(165., -25., 0.),
+            .with_alignment(TextAlignment::Center),
+            transform: Transform::from_xyz(240., -25., 0.),
             ..default()
         })
         .insert(DeadApesText)

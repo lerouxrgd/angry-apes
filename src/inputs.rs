@@ -462,16 +462,16 @@ pub fn gamepad_connection_events(
 ) {
     for event in gamepad_event.iter() {
         match &event {
-            GamepadEvent {
-                event_type: GamepadEventType::Connected(_),
+            GamepadEvent::Connection(GamepadConnectionEvent {
+                connection: GamepadConnection::Connected(_),
                 ..
-            } => {
+            }) => {
                 *input_kind = InputKind::Gamepad;
             }
-            GamepadEvent {
-                event_type: GamepadEventType::Disconnected,
+            GamepadEvent::Connection(GamepadConnectionEvent {
+                connection: GamepadConnection::Disconnected,
                 ..
-            } => {
+            }) => {
                 *input_kind = InputKind::Keyboard;
             }
             _ => (),

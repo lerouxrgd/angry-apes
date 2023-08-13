@@ -133,7 +133,7 @@ pub enum UnitState {
     Dash,
 }
 
-#[derive(Component)]
+#[derive(Component, Event)]
 pub struct UnitChanged {
     unit: Entity,
     new_state: Option<UnitState>,
@@ -205,6 +205,7 @@ impl Default for DashCooldown {
     }
 }
 
+#[derive(Event)]
 pub struct UnitAttack(pub Entity);
 
 #[derive(Component)]

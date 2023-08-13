@@ -82,8 +82,8 @@ fn main() {
                 .build()
                 .add_before::<AssetPlugin, _>(EmbeddedAssetPlugin),
         )
-        .add_plugin(ShapePlugin)
-        .add_plugin(AsepritePlugin)
+        .add_plugins(ShapePlugin)
+        .add_plugins(AsepritePlugin)
         // Initialize game
         .init_resource::<AsepriteHandles>()
         .init_resource::<Events<UnitChanged>>()
@@ -92,20 +92,19 @@ fn main() {
         .init_resource::<Score>()
         .add_state::<AppState>()
         // Game related systems
-        .add_system(load_assets.in_schedule(OnEnter(AppState::Loading)))
-        .add_system(check_assets.in_set(OnUpdate(AppState::Loading)))
-        .add_system(setup.in_schedule(OnExit(AppState::Loading)))
+        .add_systems(OnEnter(AppState::Loading), load_assets)
+        .add_systems(Update, check_assets.run_if(in_state(AppState::Loading)))
+        .add_systems(OnExit(AppState::Loading), setup)
         .add_systems(
-            (
-                // Input related systems
-                gamepad_connection_events.before(handle_input),
-                handle_input,
-            )
-                .in_set(OnUpdate(AppState::InGame)),
+            Update,
+            // Input related systems
+            (gamepad_connection_events.before(handle_input), handle_input)
+                .run_if(in_state(AppState::InGame)),
         )
         .add_systems(
+            Update,
+            // Player related systems
             (
-                // Player related systems
                 move_units,
                 fall_units,
                 tick_dashes,
@@ -113,24 +112,26 @@ fn main() {
                 transition_units.before(AsepriteSystems::Animate),
                 unit_attacks_ape.after(transition_units),
                 reorient_units_on_sprite_change,
-                update_units,
+                update_units.after(transition_units),
             )
-                .in_set(OnUpdate(AppState::InGame)),
+                .run_if(in_state(AppState::InGame)),
         )
         .add_systems(
+            Update,
+            // Eth related systems
             (
-                // Eth related systems
                 make_eth,
                 animate_eth,
                 player_collects_eth,
                 player_eth_gauge,
                 decay_player_eth,
             )
-                .in_set(OnUpdate(AppState::InGame)),
+                .run_if(in_state(AppState::InGame)),
         )
         .add_systems(
+            Update,
+            // Ape related systems
             (
-                // Ape related systems
                 make_ape,
                 move_apes,
                 trigger_ape_attack,
@@ -139,12 +140,12 @@ fn main() {
                 animate_apes_attacks,
                 display_dead_apes_hud,
             )
-                .in_set(OnUpdate(AppState::InGame)),
+                .run_if(in_state(AppState::InGame)),
         )
         // Gameover related systems
-        .add_system(despawn_game_state.in_schedule(OnEnter(AppState::GameOver)))
-        .add_system(gameover_screen.in_set(OnUpdate(AppState::GameOver)))
-        .add_system(respawn_game_state.in_schedule(OnExit(AppState::GameOver)))
+        .add_systems(OnEnter(AppState::GameOver), despawn_game_state)
+        .add_systems(Update, gameover_screen.run_if(in_state(AppState::GameOver)))
+        .add_systems(OnExit(AppState::GameOver), respawn_game_state)
         .run();
 }
 

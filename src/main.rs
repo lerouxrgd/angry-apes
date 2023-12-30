@@ -27,11 +27,11 @@ mod prelude {
         Gamepad, GamepadAxisType, GamepadButton, GamepadConnection, GamepadConnectionEvent,
         GamepadEvent,
     };
-    pub use bevy::input::keyboard::KeyboardInput;
     pub use bevy::prelude::*;
     pub use bevy::render::camera::OrthographicProjection;
     pub use bevy::render::camera::ScalingMode;
     pub use bevy::text::TextLayoutInfo;
+    pub use bevy::window::WindowResolution;
     pub use bevy_embedded_assets::EmbeddedAssetPlugin;
     pub use bevy_mod_aseprite::{
         Aseprite, AsepriteAnimation, AsepriteBundle, AsepritePlugin, AsepriteSystems, AsepriteTag,
@@ -61,14 +61,13 @@ mod prelude {
     pub const PROJECTION_SCALE: f32 = 300.;
 }
 
-use bevy::window::WindowResolution;
-
 use crate::prelude::*;
 
 fn main() {
     App::new()
         // Setup plugins
-        .add_plugins(
+        .add_plugins((
+            EmbeddedAssetPlugin::default(),
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
@@ -79,11 +78,10 @@ fn main() {
                     ..default()
                 })
                 .set(ImagePlugin::default_nearest())
-                .build()
-                .add_before::<AssetPlugin, _>(EmbeddedAssetPlugin),
-        )
-        .add_plugins(ShapePlugin)
-        .add_plugins(AsepritePlugin)
+                .build(),
+            ShapePlugin,
+            AsepritePlugin,
+        ))
         // Initialize game
         .init_resource::<AsepriteHandles>()
         .init_resource::<Events<UnitChanged>>()
@@ -161,11 +159,15 @@ fn check_assets(
     asset_server: Res<AssetServer>,
     mut state: ResMut<NextState<AppState>>,
 ) {
-    if let LoadState::Loaded =
-        asset_server.get_group_load_state(aseprite_handles.iter().map(|(_, handle)| handle.id()))
-    {
-        state.set(AppState::InGame);
-    }
+    aseprite_handles
+        .iter()
+        .all(|(_, handle)| {
+            matches!(
+                asset_server.get_load_state(handle.id()),
+                Some(LoadState::Loaded)
+            )
+        })
+        .then(|| state.set(AppState::InGame));
 }
 
 fn setup(

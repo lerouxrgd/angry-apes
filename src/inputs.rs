@@ -460,7 +460,7 @@ pub fn gamepad_connection_events(
     mut input_kind: ResMut<InputKind>,
     mut gamepad_event: EventReader<GamepadEvent>,
 ) {
-    for event in gamepad_event.iter() {
+    for event in gamepad_event.read() {
         match &event {
             GamepadEvent::Connection(GamepadConnectionEvent {
                 connection: GamepadConnection::Connected(_),

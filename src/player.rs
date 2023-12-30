@@ -237,7 +237,7 @@ pub fn update_units(
         new_state,
         new_condition,
         new_orientation,
-    } in ev_unit_changed.iter()
+    } in ev_unit_changed.read()
     {
         let Ok((
             unit_kind,
@@ -248,8 +248,8 @@ pub fn update_units(
             mut aseprite_h,
             mut animation,
             mut orientation,
-
-        )) = units_q.get_mut(unit) else {
+        )) = units_q.get_mut(unit)
+        else {
             continue;
         };
 
@@ -339,7 +339,9 @@ pub fn transition_units(
     mut app_state: ResMut<NextState<AppState>>,
 ) {
     for (unit, &unit_state, is_player, dash, handle, anim) in &units_q {
-        let Some(aseprite) = aseprites.get(handle) else { continue };
+        let Some(aseprite) = aseprites.get(handle) else {
+            continue;
+        };
         match unit_state {
             UnitState::Attack => {
                 let remaining_frames = anim.remaining_tag_frames(aseprite.info()).unwrap();
@@ -418,7 +420,7 @@ pub fn unit_attacks_ape(
         With<Ape>,
     >,
 ) {
-    for &UnitAttack(unit) in ev_unit_attack.iter() {
+    for &UnitAttack(unit) in ev_unit_attack.read() {
         let (unit_transform, unit_condition) = match units_q.get(unit) {
             Ok(q_res) => q_res,
             Err(_) => return,

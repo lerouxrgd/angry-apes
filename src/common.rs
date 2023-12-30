@@ -51,6 +51,7 @@ pub fn spawn_camera(commands: &mut Commands) {
     };
 
     let camera = Camera2dBundle {
+        transform: Transform::from_xyz(0., 0., 1000.),
         projection,
         ..default()
     };
@@ -292,8 +293,8 @@ pub fn gameover_screen(
 ) {
     let (mut text, text_size) = text_q.single_mut();
     text.sections[0].value = format!("You   managed   to   kill   [ {} ]", score.0);
-    let icon_offset = text_size.size.x / 2.;
-    icon_q.single_mut().translation.x = icon_offset - 50.;
+    let icon_offset = text_size.logical_size.x / 2. + 30.;
+    icon_q.single_mut().translation.x = icon_offset;
 
     *gameover_elements_q.single_mut() = Visibility::Visible;
 

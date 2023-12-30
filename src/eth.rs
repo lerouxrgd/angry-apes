@@ -47,7 +47,10 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
         .insert((
             ShapeBundle {
                 path: builder.build(),
-                transform: Transform::from_xyz(-540., 280., 999.),
+                spatial: SpatialBundle {
+                    transform: Transform::from_xyz(-540., 280., 999.),
+                    ..default()
+                },
                 ..default()
             },
             Fill::color(Color::NONE),
@@ -77,7 +80,10 @@ pub fn spawn_eth_hud(commands: &mut Commands, asset_server: &AssetServer) {
         .spawn((
             ShapeBundle {
                 path: builder.build(),
-                transform: Transform::from_xyz(3. / 2., -3. / 2., 0.),
+                spatial: SpatialBundle {
+                    transform: Transform::from_xyz(3. / 2., -3. / 2., 0.),
+                    ..default()
+                },
                 ..default()
             },
             Fill::color(Color::rgb_u8(132, 132, 132)),

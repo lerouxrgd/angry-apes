@@ -169,7 +169,10 @@ pub fn spawn_ape_damaged_anim(
             .spawn((
                 ShapeBundle {
                     path: builder.build(),
-                    transform: Transform::from_xyz(10., 300., 15.),
+                    spatial: SpatialBundle {
+                        transform: Transform::from_xyz(10., 300., 15.),
+                        ..default()
+                    },
                     ..default()
                 },
                 Fill::color(Color::PINK),
